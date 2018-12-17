@@ -12,21 +12,33 @@ var is = {
     isEraser: false,
     isText: false,
     isImage: false,
+    isPdf: false,
 
     set: function(shape) {
         var cache = this;
 
-        cache.isLine = cache.isArrow = cache.isArc = cache.isDragLastPath = cache.isDragAllPaths = cache.isRectangle = cache.isQuadraticCurve = cache.isBezierCurve = cache.isPencil = cache.isMarker = cache.isEraser = cache.isText = cache.isImage = false;
+        cache.isLine = cache.isArrow = cache.isArc = cache.isDragLastPath = cache.isDragAllPaths = cache.isRectangle = cache.isQuadraticCurve = cache.isBezierCurve = cache.isPencil = cache.isMarker = cache.isEraser = cache.isText = cache.isImage = cache.isPdf = false;
         cache['is' + shape] = true;
     }
 };
 
 function addEvent(element, eventType, callback) {
+    if (eventType.split(' ').length > 1) {
+        var events = eventType.split(' ');
+        for (var i = 0; i < events.length; i++) {
+            addEvent(element, events[i], callback);
+        }
+        return;
+    }
+
     if (element.addEventListener) {
         element.addEventListener(eventType, callback, !1);
         return true;
-    } else if (element.attachEvent) return element.attachEvent('on' + eventType, callback);
-    else element['on' + eventType] = callback;
+    } else if (element.attachEvent) {
+        return element.attachEvent('on' + eventType, callback);
+    } else {
+        element['on' + eventType] = callback;
+    }
     return this;
 }
 
@@ -38,7 +50,7 @@ var points = [],
     textarea = find('code-text'),
     lineWidth = 2,
     strokeStyle = '#6c96c8',
-    fillStyle = 'transparent',
+    fillStyle = 'rgba(0,0,0,0)',
     globalAlpha = 1,
     globalCompositeOperation = 'source-over',
     lineCap = 'round',
@@ -303,36 +315,36 @@ var common = {
             if (p[0] === 'arc') {
                 output += 'context.beginPath();\n' + 'context.arc(' + getPoint(point[0], x, 'x') + ', ' + getPoint(point[1], y, 'y') + ', ' + point[2] + ', ' + point[3] + ', 0, ' + point[4] + ');\n'
 
-                +
-                this.strokeOrFill(p[2]);
+                    +
+                    this.strokeOrFill(p[2]);
             }
 
             if (p[0] === 'pencil') {
                 output += 'context.beginPath();\n' + 'context.moveTo(' + getPoint(point[0], x, 'x') + ', ' + getPoint(point[1], y, 'y') + ');\n' + 'context.lineTo(' + getPoint(point[2], x, 'x') + ', ' + getPoint(point[3], y, 'y') + ');\n'
 
-                +
-                this.strokeOrFill(p[2]);
+                    +
+                    this.strokeOrFill(p[2]);
             }
 
             if (p[0] === 'marker') {
                 output += 'context.beginPath();\n' + 'context.moveTo(' + getPoint(point[0], x, 'x') + ', ' + getPoint(point[1], y, 'y') + ');\n' + 'context.lineTo(' + getPoint(point[2], x, 'x') + ', ' + getPoint(point[3], y, 'y') + ');\n'
 
-                +
-                this.strokeOrFill(p[2]);
+                    +
+                    this.strokeOrFill(p[2]);
             }
 
             if (p[0] === 'eraser') {
                 output += 'context.beginPath();\n' + 'context.moveTo(' + getPoint(point[0], x, 'x') + ', ' + getPoint(point[1], y, 'y') + ');\n' + 'context.lineTo(' + getPoint(point[2], x, 'x') + ', ' + getPoint(point[3], y, 'y') + ');\n'
 
-                +
-                this.strokeOrFill(p[2]);
+                    +
+                    this.strokeOrFill(p[2]);
             }
 
             if (p[0] === 'line') {
                 output += 'context.beginPath();\n' + 'context.moveTo(' + getPoint(point[0], x, 'x') + ', ' + getPoint(point[1], y, 'y') + ');\n' + 'context.lineTo(' + getPoint(point[2], x, 'x') + ', ' + getPoint(point[3], y, 'y') + ');\n'
 
-                +
-                this.strokeOrFill(p[2]);
+                    +
+                    this.strokeOrFill(p[2]);
             }
 
             if (p[0] === 'arrow') {
@@ -350,15 +362,15 @@ var common = {
             if (p[0] === 'quadratic') {
                 output += 'context.beginPath();\n' + 'context.moveTo(' + getPoint(point[0], x, 'x') + ', ' + getPoint(point[1], y, 'y') + ');\n' + 'context.quadraticCurveTo(' + getPoint(point[2], x, 'x') + ', ' + getPoint(point[3], y, 'y') + ', ' + getPoint(point[4], x, 'x') + ', ' + getPoint(point[5], y, 'y') + ');\n'
 
-                +
-                this.strokeOrFill(p[2]);
+                    +
+                    this.strokeOrFill(p[2]);
             }
 
             if (p[0] === 'bezier') {
                 output += 'context.beginPath();\n' + 'context.moveTo(' + getPoint(point[0], x, 'x') + ', ' + getPoint(point[1], y, 'y') + ');\n' + 'context.bezierCurveTo(' + getPoint(point[2], x, 'x') + ', ' + getPoint(point[3], y, 'y') + ', ' + getPoint(point[4], x, 'x') + ', ' + getPoint(point[5], y, 'y') + ', ' + getPoint(point[6], x, 'x') + ', ' + getPoint(point[7], y, 'y') + ');\n'
 
-                +
-                this.strokeOrFill(p[2]);
+                    +
+                    this.strokeOrFill(p[2]);
             }
 
             if (i !== length - 1) output += '\n\n';
@@ -369,50 +381,50 @@ var common = {
     },
     forLoop: 'for(i; i < length; i++) {\n' + '    p = points[i];\n' + '    point = p[1];\n' + '    context.beginPath();\n\n'
 
-    // globals
+        // globals
         +
         '    if(p[2]) { \n' + '\tcontext.lineWidth = p[2][0];\n' + '\tcontext.strokeStyle = p[2][1];\n' + '\tcontext.fillStyle = p[2][2];\n'
 
         +
         '\tcontext.globalAlpha = p[2][3];\n' + '\tcontext.globalCompositeOperation = p[2][4];\n' + '\tcontext.lineCap = p[2][5];\n' + '\tcontext.lineJoin = p[2][6];\n' + '\tcontext.font = p[2][7];\n' + '    }\n\n'
 
-    // line
+        // line
 
         +
         '    if(p[0] === "line") { \n' + '\tcontext.moveTo(point[0], point[1]);\n' + '\tcontext.lineTo(point[2], point[3]);\n' + '    }\n\n'
 
-    // arrow
+        // arrow
 
         +
         '    if(p[0] === "arrow") { \n' + '\tdrawArrow(point[0], point[1], point[2], point[3], p[2]);\n' + '    }\n\n'
 
-    // pencil
+        // pencil
 
         +
         '    if(p[0] === "pencil") { \n' + '\tcontext.moveTo(point[0], point[1]);\n' + '\tcontext.lineTo(point[2], point[3]);\n' + '    }\n\n'
 
-    // marker
+        // marker
 
         +
         '    if(p[0] === "marker") { \n' + '\tcontext.moveTo(point[0], point[1]);\n' + '\tcontext.lineTo(point[2], point[3]);\n' + '    }\n\n'
 
 
-    // text
+        // text
 
         +
         '    if(p[0] === "text") { \n' + '\tcontext.fillText(point[0], point[1], point[2]);\n' + '    }\n\n'
 
-    // eraser
+        // eraser
 
         +
         '    if(p[0] === "eraser") { \n' + '\tcontext.moveTo(point[0], point[1]);\n' + '\tcontext.lineTo(point[2], point[3]);\n' + '    }\n\n'
 
-    // arc
+        // arc
 
         +
         '    if(p[0] === "arc") context.arc(point[0], point[1], point[2], point[3], 0, point[4]); \n\n'
 
-    // rect
+        // rect
 
         +
         '    if(p[0] === "rect") {\n' + '\tcontext.strokeRect(point[0], point[1], point[2], point[3]);\n' + '\tcontext.fillRect(point[0], point[1], point[2], point[3]);\n'
@@ -420,17 +432,17 @@ var common = {
         +
         '    }\n\n'
 
-    // quadratic
+        // quadratic
 
         +
         '    if(p[0] === "quadratic") {\n' + '\tcontext.moveTo(point[0], point[1]);\n' + '\tcontext.quadraticCurveTo(point[2], point[3], point[4], point[5]);\n' + '    }\n\n'
 
-    // bezier
+        // bezier
 
         +
         '    if(p[0] === "bezier") {\n' + '\tcontext.moveTo(point[0], point[1]);\n' + '\tcontext.bezierCurveTo(point[2], point[3], point[4], point[5], point[6], point[7]);\n' + '    }\n\n'
 
-    // end-fill
+        // end-fill
 
         +
         '    context.stroke();\n' + '    context.fill();\n'
@@ -477,7 +489,7 @@ function drawArrow(mx, my, lx, ly, options) {
         return [
             opt.lineWidth || 2,
             opt.strokeStyle || '#6c96c8',
-            opt.fillStyle || 'transparent',
+            opt.fillStyle || 'rgba(0,0,0,0)',
             opt.globalAlpha || 1,
             opt.globalCompositeOperation || 'source-over',
             opt.lineCap || 'round',
@@ -581,4 +593,49 @@ function paste() {
         points = points.concat(copiedStuff);
         setSelection(find('drag-all-paths'), 'DragAllPaths');
     }
+}
+
+// marker + pencil
+function hexToR(h) {
+    return parseInt((cutHex(h)).substring(0, 2), 16)
+}
+
+function hexToG(h) {
+    return parseInt((cutHex(h)).substring(2, 4), 16)
+}
+
+function hexToB(h) {
+    return parseInt((cutHex(h)).substring(4, 6), 16)
+}
+
+function cutHex(h) {
+    return (h.charAt(0) == "#") ? h.substring(1, 7) : h
+}
+
+function clone(obj) {
+    if (obj === null || typeof(obj) !== 'object' || 'isActiveClone' in obj)
+        return obj;
+
+    if (obj instanceof Date)
+        var temp = new obj.constructor(); //or new Date(obj);
+    else
+        var temp = obj.constructor();
+
+    for (var key in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            obj['isActiveClone'] = null;
+            temp[key] = clone(obj[key]);
+            delete obj['isActiveClone'];
+        }
+    }
+
+    return temp;
+}
+
+function hexToRGB(h) {
+    return [
+        hexToR(h),
+        hexToG(h),
+        hexToB(h)
+    ]
 }

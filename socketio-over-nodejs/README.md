@@ -1,4 +1,4 @@
-# [Socket.io over Node.js](https://github.com/muaz-khan/WebRTC-Experiment/blob/master/socketio-over-nodejs) / [Demo](https://socketio-signaling.herokuapp.com/) 
+# [Socket.io over Node.js](https://github.com/muaz-khan/WebRTC-Experiment/blob/master/socketio-over-nodejs) / [Demo](https://www.webrtc-experiment.com/video-conferencing/) 
 
 [![npm](https://img.shields.io/npm/v/socketio-over-nodejs.svg)](https://npmjs.org/package/socketio-over-nodejs) [![downloads](https://img.shields.io/npm/dm/socketio-over-nodejs.svg)](https://npmjs.org/package/socketio-over-nodejs)
 
@@ -42,7 +42,7 @@ mkdir socketio-over-nodejs
 cd socketio-over-nodejs
 
 # get package
-wget http://dl.webrtc-experiment.com/socketio-over-nodejs.tar
+wget http://webrtcweb.com/socketio-over-nodejs.tar
 
 # extract package
 tar -xf socketio-over-nodejs.tar
@@ -53,6 +53,10 @@ node signaler.js
 # run HTTPs server
 node signaler-ssl.js
 ```
+
+# Download ZIP on windows
+
+http://webrtcweb.com/websocket-over-nodejs.zip
 
 Now, you can open port `8888` on your ip address/domain; or otherwise on localhost: `http://localhost:8888/`
 
@@ -124,7 +128,7 @@ Then open `http://localhost:8888/`.
 In `ui.js` files you can find `openSocket` method; or in all libraries; you can find `openSignalingChannel` method.
 
 ```javascript
-var SIGNALING_SERVER = 'https://socketio-signaling.herokuapp.com:443/';
+var SIGNALING_SERVER = 'https://socketio-over-nodejs2.herokuapp.com:443/';
 connection.openSignalingChannel = function(config) {
    var channel = config.channel || this.channel || 'default-namespace';
    var sender = Math.round(Math.random() * 9999999999) + 9999999999;
@@ -159,7 +163,7 @@ connection.openSignalingChannel = function(config) {
 ```javascript
 var config = {
     openSocket: function (config) {
-        var SIGNALING_SERVER = 'https://socketio-signaling.herokuapp.com:443/';
+        var SIGNALING_SERVER = 'https://socketio-over-nodejs2.herokuapp.com:443/';
 
         config.channel = config.channel || location.href.replace(/\/|:|#|%|\.|\[|\]/g, '');
         var sender = Math.round(Math.random() * 999999999) + 999999999;
@@ -193,7 +197,7 @@ var config = {
 You can detect presence of a room like this:
 
 ```javascript
-var SIGNALING_SERVER = 'https://socketio-signaling.herokuapp.com:443/';
+var SIGNALING_SERVER = 'https://socketio-over-nodejs2.herokuapp.com:443/';
 function testChannelPresence(channel) {
     var socket = io.connect(SIGNALING_SERVER);
     socket.on('presence', function (isChannelPresent) {

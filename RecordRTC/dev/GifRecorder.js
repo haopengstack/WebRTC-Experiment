@@ -8,7 +8,7 @@
  * @typedef GifRecorder
  * @class
  * @example
- * var recorder = new GifRecorder(mediaStream || canvas || context, { width: 1280, height: 720, frameRate: 200, quality: 10 });
+ * var recorder = new GifRecorder(mediaStream || canvas || context, { onGifPreview: function, onGifRecordingStarted: function, width: 1280, height: 720, frameRate: 200, quality: 10 });
  * recorder.record();
  * recorder.stop(function(blob) {
  *     img.src = URL.createObjectURL(blob);
@@ -20,7 +20,9 @@
 
 function GifRecorder(mediaStream, config) {
     if (typeof GIFEncoder === 'undefined') {
-        throw 'Please link: https://cdn.webrtc-experiment.com/gif-recorder.js';
+        var script = document.createElement('script');
+        script.src = 'https://cdn.webrtc-experiment.com/gif-recorder.js';
+        (document.body || document.documentElement).appendChild(script);
     }
 
     config = config || {};
@@ -35,12 +37,22 @@ function GifRecorder(mediaStream, config) {
      * recorder.record();
      */
     this.record = function() {
+        if (typeof GIFEncoder === 'undefined') {
+            setTimeout(self.record, 1000);
+            return;
+        }
+
+        if (!isLoadedMetaData) {
+            setTimeout(self.record, 1000);
+            return;
+        }
+
         if (!isHTMLObject) {
             if (!config.width) {
                 config.width = video.offsetWidth || 320;
             }
 
-            if (!this.height) {
+            if (!config.height) {
                 config.height = video.offsetHeight || 240;
             }
 
@@ -58,11 +70,11 @@ function GifRecorder(mediaStream, config) {
                 };
             }
 
-            canvas.width = config.canvas.width;
-            canvas.height = config.canvas.height;
+            canvas.width = config.canvas.width || 320;
+            canvas.height = config.canvas.height || 240;
 
-            video.width = config.video.width;
-            video.height = config.video.height;
+            video.width = config.video.width || 320;
+            video.height = config.video.height || 240;
         }
 
         // external library to record as GIF images
@@ -92,11 +104,17 @@ function GifRecorder(mediaStream, config) {
         // This writes the GIF Header and returns false if it fails.
         gifEncoder.start();
 
+        if (typeof config.onGifRecordingStarted === 'function') {
+            config.onGifRecordingStarted();
+        }
+
         startTime = Date.now();
 
-        var self = this;
-
         function drawVideoFrame(time) {
+            if (self.clearedRecordedData === true) {
+                return;
+            }
+
             if (isPausedRecording) {
                 return setTimeout(function() {
                     drawVideoFrame(time);
@@ -149,7 +167,9 @@ function GifRecorder(mediaStream, config) {
      *     img.src = URL.createObjectURL(blob);
      * });
      */
-    this.stop = function() {
+    this.stop = function(callback) {
+        callback = callback || function() {};
+
         if (lastAnimationFrame) {
             cancelAnimationFrame(lastAnimationFrame);
         }
@@ -167,6 +187,8 @@ function GifRecorder(mediaStream, config) {
         this.blob = new Blob([new Uint8Array(gifEncoder.stream().bin)], {
             type: 'image/gif'
         });
+
+        callback(this.blob);
 
         // bug: find a way to clear old recorded blobs
         gifEncoder.stream().bin = [];
@@ -204,13 +226,20 @@ function GifRecorder(mediaStream, config) {
      * recorder.clearRecordedData();
      */
     this.clearRecordedData = function() {
-        if (!gifEncoder) {
-            return;
+        self.clearedRecordedData = true;
+        clearRecordedDataCB();
+    };
+
+    function clearRecordedDataCB() {
+        if (gifEncoder) {
+            gifEncoder.stream().bin = [];
         }
+    }
 
-        this.pause();
-
-        gifEncoder.stream().bin = [];
+    // for debugging
+    this.name = 'GifRecorder';
+    this.toString = function() {
+        return this.name;
     };
 
     var canvas = document.createElement('canvas');
@@ -226,16 +255,19 @@ function GifRecorder(mediaStream, config) {
         }
     }
 
+    var isLoadedMetaData = true;
+
     if (!isHTMLObject) {
         var video = document.createElement('video');
         video.muted = true;
         video.autoplay = true;
 
-        if (typeof video.srcObject !== 'undefined') {
-            video.srcObject = mediaStream;
-        } else {
-            video.src = URL.createObjectURL(mediaStream);
-        }
+        isLoadedMetaData = false;
+        video.onloadedmetadata = function() {
+            isLoadedMetaData = true;
+        };
+
+        setSrcObject(mediaStream, video);
 
         video.play();
     }
@@ -244,6 +276,8 @@ function GifRecorder(mediaStream, config) {
     var startTime, endTime, lastFrameTime;
 
     var gifEncoder;
+
+    var self = this;
 }
 
 if (typeof RecordRTC !== 'undefined') {

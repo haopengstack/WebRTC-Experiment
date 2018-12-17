@@ -1,182 +1,126 @@
-﻿// Enable Time Duration?
-// Change Icon???
-// IconTextBackgroundColor
-// Enable Tab+Screen
-
-chrome.storage.sync.get(null, function(items) {
-    if (items['resolutions']) {
-        document.getElementById('resolutions').value = items['resolutions'];
-    } else {
-        chrome.storage.sync.set({
-            resolutions: 'Default (29999x8640)'
-        }, function() {
-            document.getElementById('resolutions').value = 'Default (29999x8640)';
-        });
-    }
-
+﻿chrome.storage.sync.get(null, function(items) {
     if (items['videoCodec']) {
-        document.getElementById('videoCodec').value = items['videoCodec'];
+        querySelectorAll('#videoCodec input').forEach(function(input) {
+            var codec = input.parentNode.textContent;
+            if (codec !== items['videoCodec']) {
+                input.checked = false;
+                return;
+            }
+            input.checked = true;
+        });
     } else {
         chrome.storage.sync.set({
-            videoCodec: ''
+            videoCodec: 'Default'
         }, function() {
-            document.getElementById('videoCodec').value = 'Default';
+            querySelectorAll('#videoCodec input')[0].checked = true;
         });
     }
 
-    if (items['videoMaxFrameRates']) {
+    if (items['videoMaxFrameRates'] && items['videoMaxFrameRates'] !== 'None' && items['videoMaxFrameRates'].length) {
         document.getElementById('videoMaxFrameRates').value = items['videoMaxFrameRates'];
     } else {
         chrome.storage.sync.set({
             videoMaxFrameRates: ''
         }, function() {
-            document.getElementById('videoMaxFrameRates').value = '';
+            document.getElementById('videoMaxFrameRates').value = 'None';
         });
     }
 
-    if (items['videoBitsPerSecond']) {
-        document.getElementById('videoBitsPerSecond').value = items['videoBitsPerSecond'];
+    if (items['bitsPerSecond']) {
+        document.getElementById('bitsPerSecond').value = items['bitsPerSecond'];
     } else {
         chrome.storage.sync.set({
-            videoBitsPerSecond: ''
+            bitsPerSecond: ''
         }, function() {
-            document.getElementById('videoBitsPerSecond').value = '';
+            document.getElementById('bitsPerSecond').value = 'default';
         });
     }
 
-    if (items['audioBitsPerSecond']) {
-        document.getElementById('audioBitsPerSecond').value = items['audioBitsPerSecond'];
+    if (items['youtube_privacy']) {
+        document.getElementById('youtube_privacy').value = items['youtube_privacy'];
     } else {
         chrome.storage.sync.set({
-            audioBitsPerSecond: ''
+            youtube_privacy: ''
         }, function() {
-            document.getElementById('audioBitsPerSecond').value = '';
+            document.getElementById('youtube_privacy').value = 'public';
         });
     }
 
-    if (items['enableTabAudio']) {
-        if(getChromeVersion() < 53) {
-            items['enableTabAudio'] = 'false';
-        }
-
-        document.getElementById('enableTabAudio').checked = items['enableTabAudio'] === 'true';
+    if (items['videoResolutions']) {
+        document.getElementById('videoResolutions').value = items['videoResolutions'];
     } else {
         chrome.storage.sync.set({
-            enableTabAudio: 'false'
+            videoResolutions: '1920x1080'
         }, function() {
-            document.getElementById('enableTabAudio').removeAttribute('checked');
-        });
-    }
-
-    if (items['enableMicrophone']) {
-        document.getElementById('enableMicrophone').checked = items['enableMicrophone'] === 'true';
-    } else {
-        chrome.storage.sync.set({
-            enableMicrophone: 'false'
-        }, function() {
-            document.getElementById('enableMicrophone').removeAttribute('checked');
+            document.getElementById('videoResolutions').value = '1920x1080';
         });
     }
 });
 
-document.getElementById('resolutions').onchange = function() {
-    this.disabled = true;
-    showSaving();
-    chrome.storage.sync.set({
-        resolutions: this.value
-    }, function() {
-        document.getElementById('resolutions').disabled = false;
-        hideSaving();
-    });
-};
+function querySelectorAll(selector) {
+    return Array.prototype.slice.call(document.querySelectorAll(selector));
+}
 
-document.getElementById('videoCodec').onchange = function() {
-    this.disabled = true;
-    showSaving();
-    chrome.storage.sync.set({
-        videoCodec: this.value
-    }, function() {
-        document.getElementById('videoCodec').disabled = false;
-        hideSaving();
-    });
-};
+querySelectorAll('#videoCodec input').forEach(function(input) {
+    input.onchange = function() {
+        querySelectorAll('#videoCodec input').forEach(function(input) {
+            input.checked = false;
+        });
 
-document.getElementById('videoMaxFrameRates').onblur = function() {
+        this.checked = true;
+
+        var codec = this.parentNode.textContent;
+
+        showSaving();
+        chrome.storage.sync.set({
+            videoCodec: codec
+        }, function() {
+            hideSaving();
+        });
+    };
+});
+
+document.getElementById('videoMaxFrameRates').onchange = function() {
     this.disabled = true;
+
     showSaving();
     chrome.storage.sync.set({
-        videoMaxFrameRates: this.value
+        videoMaxFrameRates: this.value === 'None' ? '' : this.value
     }, function() {
         document.getElementById('videoMaxFrameRates').disabled = false;
         hideSaving();
     });
 };
 
-document.getElementById('enableTabAudio').onchange = function(event) {
-    if(!!event) {
-        // microphone along with tab+audio is NOT allowed
-        document.getElementById('enableMicrophone').checked = false;
-        document.getElementById('enableMicrophone').onchange();
-    }
-
-    if(getChromeVersion() < 53) {
-        this.checked = false;
-
-        var label = this.parentNode.querySelector('label');
-        label.style.color = 'red';
-        label.innerHTML = 'Please try Chrome version 53 or newer.';
-
-        var small = this.parentNode.querySelector('small');
-        small.style.color = '#bb0000';
-        small.innerHTML = 'You are using Chrome version ' + getChromeVersion() + ' which is <b>incapable</b> to capture audios on any selected tab.';
-        return;
-    }
-
-    document.getElementById('enableTabAudio').disabled = true;
-    showSaving();
-    chrome.storage.sync.set({
-        enableTabAudio: document.getElementById('enableTabAudio').checked ? 'true' : 'false'
-    }, function() {
-        document.getElementById('enableTabAudio').disabled = false;
-        hideSaving();
-    });
-};
-
-document.getElementById('enableMicrophone').onchange = function(event) {
-    if(!!event) {
-        // microphone along with tab+audio is NOT allowed
-        document.getElementById('enableTabAudio').checked = false;
-        document.getElementById('enableTabAudio').onchange();
-    }
-
-    document.getElementById('enableMicrophone').disabled = true;
-    showSaving();
-    chrome.storage.sync.set({
-        enableMicrophone: document.getElementById('enableMicrophone').checked ? 'true' : 'false'
-    }, function() {
-        document.getElementById('enableMicrophone').disabled = false;
-        hideSaving();
-    });
-};
-
-document.getElementById('videoBitsPerSecond').onblur = function() {
+document.getElementById('bitsPerSecond').onchange = function() {
     this.disabled = true;
     showSaving();
     chrome.storage.sync.set({
-        videoBitsPerSecond: this.value
+        bitsPerSecond: this.value === 'default' ? '' : this.value
     }, function() {
-        document.getElementById('videoBitsPerSecond').disabled = false;
+        document.getElementById('bitsPerSecond').disabled = false;
         hideSaving();
     });
 };
 
-document.getElementById('audioBitsPerSecond').onblur = function() {
+document.getElementById('youtube_privacy').onchange = function() {
     this.disabled = true;
     showSaving();
     chrome.storage.sync.set({
-        audioBitsPerSecond: this.value
+        youtube_privacy: this.value === 'public' ? '' : this.value
     }, function() {
-        document.getElementById('audioBitsPerSecond').disabled = false;
+        document.getElementById('youtube_privacy').disabled = false;
+        hideSaving();
+    });
+};
+
+document.getElementById('videoResolutions').onchange = function() {
+    this.disabled = true;
+    showSaving();
+    chrome.storage.sync.set({
+        videoResolutions: this.value || '1920x1080'
+    }, function() {
+        document.getElementById('videoResolutions').disabled = false;
         hideSaving();
     });
 };
@@ -191,7 +135,83 @@ function hideSaving() {
     }, 700);
 }
 
-function getChromeVersion() {
-    var raw = navigator.userAgent.match(/Chrom(e|ium)\/([0-9]+)\./);
-    return raw ? parseInt(raw[2], 10) : 52;
+// camera & mic
+// microphone-devices
+function onGettingDevices(result, stream) {
+    chrome.storage.sync.get('microphone', function(storage) {
+        result.audioInputDevices.forEach(function(device, idx) {
+            var option = document.createElement('option');
+            option.innerHTML = device.label || device.id;
+            option.value = device.id;
+
+            if (!storage.microphone && idx === 0) {
+                option.selected = true;
+            }
+
+            if (storage.microphone && storage.microphone === device.id) {
+                option.selected = true;
+            }
+
+            document.getElementById('microphone-devices').appendChild(option);
+        });
+    });
+
+    chrome.storage.sync.get('camera', function(storage) {
+        result.videoInputDevices.forEach(function(device, idx) {
+            var option = document.createElement('option');
+            option.innerHTML = device.label || device.id;
+            option.value = device.id;
+
+            if (!storage.camera && idx === 0) {
+                option.selected = true;
+            }
+
+            if (storage.camera && storage.camera === device.id) {
+                option.selected = true;
+            }
+
+            document.getElementById('camera-devices').appendChild(option);
+        });
+    });
+
+    stream && stream.getTracks().forEach(function(track) {
+        track.stop();
+    });
 }
+
+getAllAudioVideoDevices(function(result) {
+    if (result.audioInputDevices.length && !result.audioInputDevices[0].label) {
+        var constraints = { audio: true, video: true };
+        navigator.mediaDevices.getUserMedia(constraints).then(function(stream) {
+            var video = document.createElement('video');
+            video.muted = true;
+            if('srcObject' in video) {
+                video.srcObject = stream;
+            }
+            else {
+                video.src = URL.createObjectURL(stream);
+            }
+
+            onGettingDevices(result, stream);
+        }).catch(function() {
+            onGettingDevices(result);
+        });
+        return;
+    }
+
+    onGettingDevices(result);
+});
+
+document.getElementById('microphone-devices').onchange = function() {
+    showSaving();
+    chrome.storage.sync.set({
+        microphone: this.value
+    }, hideSaving);
+};
+
+document.getElementById('camera-devices').onchange = function() {
+    showSaving();
+    chrome.storage.sync.set({
+        camera: this.value
+    }, hideSaving);
+};

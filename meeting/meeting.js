@@ -1,4 +1,4 @@
-// Last time updated at July 22, 2014, 08:32:23
+// Last time updated On: May 15, 2018
 
 // Latest file can be found here: https://cdn.webrtc-experiment.com/meeting.js
 
@@ -10,6 +10,23 @@
 // meeting.js
 
 (function () {
+
+    if(typeof adapter === 'undefined' || typeof adapter.browserDetails === 'undefined') {
+        // https://webrtc.github.io/adapter/adapter-latest.js
+        console.warn('adapter.js is recommended.');
+    }
+    else {
+        window.adapter = {
+            browserDetails: {
+                browser: 'chrome'
+            }
+        };
+    }
+
+    if(typeof IceServersHandler === 'undefined') {
+        // https:/cdn.webrtc-experiment.com/IceServersHandler.js
+        console.warn('IceServersHandler.js is recommended.');
+    }
 
     // a middle-agent between public API and the Signaler object
     window.Meeting = function (channel) {
@@ -34,23 +51,31 @@
                 video: true
             };
 
-            navigator.getUserMedia(constraints, onstream, onerror);
+            navigator.mediaDevices.getUserMedia(constraints).then(onstream).catch(onerror);
 
             function onstream(stream) {
-                stream.onended = function () {
+                addStreamStopListener(stream, function() {
                     if (self.onuserleft) self.onuserleft('self');
-                };
+                });
 
                 self.stream = stream;
 
                 var video = document.createElement('video');
                 video.id = 'self';
-                video[isFirefox ? 'mozSrcObject' : 'src'] = isFirefox ? stream : window.webkitURL.createObjectURL(stream);
-                video.autoplay = true;
-                video.controls = true;
                 video.muted = true;
                 video.volume = 0;
-                video.play();
+                
+                try {
+                        video.setAttributeNode(document.createAttribute('autoplay'));
+                        video.setAttributeNode(document.createAttribute('playsinline'));
+                        video.setAttributeNode(document.createAttribute('controls'));
+                    } catch (e) {
+                        video.setAttribute('autoplay', true);
+                        video.setAttribute('playsinline', true);
+                        video.setAttribute('controls', true);
+                    }
+
+                video.srcObject = stream;
 
                 self.onaddstream({
                     video: video,
@@ -92,6 +117,9 @@
         this.check = initSignaler;
     };
 
+    // object to store all connected peers
+    var peers = {};
+
     // it is a backbone object
 
     function Signaler(root) {
@@ -100,9 +128,6 @@
 
         // self instance
         var signaler = this;
-
-        // object to store all connected peers
-        var peers = {};
 
         // object to store all connected participants's ids
         var participants = {};
@@ -238,19 +263,29 @@
                     to: to
                 });
             },
+            onuserleft: function(_userid) {
+                if (root.onuserleft) root.onuserleft(_userid);
+            },
             onaddstream: function (stream, _userid) {
                 console.debug('onaddstream', '>>>>>>', stream);
 
-                stream.onended = function () {
+                addStreamStopListener(stream, function() {
                     if (root.onuserleft) root.onuserleft(_userid);
-                };
+                });
 
                 var video = document.createElement('video');
                 video.id = _userid;
-                video[isFirefox ? 'mozSrcObject' : 'src'] = isFirefox ? stream : window.webkitURL.createObjectURL(stream);
-                video.autoplay = true;
-                video.controls = true;
-                video.play();
+                
+                try {
+                        video.setAttributeNode(document.createAttribute('autoplay'));
+                        video.setAttributeNode(document.createAttribute('playsinline'));
+                        video.setAttributeNode(document.createAttribute('controls'));
+                    } catch (e) {
+                        video.setAttribute('autoplay', true);
+                        video.setAttribute('playsinline', true);
+                        video.setAttribute('controls', true);
+                    }
+                video.srcObject = stream;
 
                 function onRemoteStreamStartsFlowing() {
                     // chrome for android may have some features missing
@@ -332,7 +367,16 @@
             if (signaler.isbroadcaster) signaler.stopBroadcasting = true;
 
             // leave user media resources
-            if (root.stream) root.stream.stop();
+            if (root.stream) {
+                if('stop' in root.stream) {
+                    root.stream.stop();
+                }
+                else {
+                    root.stream.getTracks().forEach(function(track) {
+                        track.stop();
+                    });
+                }
+            }
 
             // if firebase; remove data from their servers
             if (window.Firebase) socket.remove();
@@ -389,92 +433,58 @@
     }
 
     // reusable stuff
-    var RTCPeerConnection = window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
-    var RTCSessionDescription = window.mozRTCSessionDescription || window.RTCSessionDescription;
-    var RTCIceCandidate = window.mozRTCIceCandidate || window.RTCIceCandidate;
-
-    navigator.getUserMedia = navigator.mozGetUserMedia || navigator.webkitGetUserMedia;
-    window.URL = window.webkitURL || window.URL;
-
-    var isFirefox = !!navigator.mozGetUserMedia;
-    var isChrome = !!navigator.webkitGetUserMedia;
+    var RTCPeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
+    var RTCSessionDescription = window.RTCSessionDescription || window.mozRTCSessionDescription;
+    var RTCIceCandidate = window.RTCIceCandidate || window.mozRTCIceCandidate;
 
     var iceServers = [];
 
-    iceServers.push({
-        url: 'stun:stun.l.google.com:19302'
-    });
-
-    iceServers.push({
-        url: 'stun:stun.anyfirewall.com:3478'
-    });
-
-    iceServers.push({
-        url: 'turn:turn.bistri.com:80',
-        credential: 'homeo',
-        username: 'homeo'
-    });
-
-    iceServers.push({
-        url: 'turn:turn.anyfirewall.com:443?transport=tcp',
-        credential: 'webrtc',
-        username: 'webrtc'
-    });
-
-    var iceServersObject = {
-        iceServers: iceServers
-    };
-
-    loadIceFrame(function (iceServers) {
-        iceServersObject.iceServers = iceServersObject.iceServers.concat(iceServers);
-    });
-
-    var iceFrame, loadedIceFrame;
-
-    function loadIceFrame(callback, skip) {
-        if (loadedIceFrame) return;
-        if (!skip) return loadIceFrame(callback, true);
-
-        loadedIceFrame = true;
-
-        var iframe = document.createElement('iframe');
-        iframe.onload = function () {
-            iframe.isLoaded = true;
-
-            window.addEventListener('message', function (event) {
-                if (!event.data || !event.data.iceServers) return;
-                callback(event.data.iceServers);
-            });
-
-            iframe.contentWindow.postMessage('get-ice-servers', '*');
-        };
-        iframe.src = 'https://cdn.webrtc-experiment.com/getIceServers/';
-        iframe.style.display = 'none';
-        (document.body || document.documentElement).appendChild(iframe);
-    };
-
-    var optionalArgument = {
-        optional: [{
-            DtlsSrtpKeyAgreement: true
-        }]
-    };
-
-    var offerAnswerConstraints = {
-        optional: [],
-        mandatory: {
-            OfferToReceiveAudio: true,
-            OfferToReceiveVideo: true
-        }
-    };
-
-    function getToken() {
-        return Math.round(Math.random() * 9999999999) + 9999999999;
+    if(typeof IceServersHandler !== 'undefined') {
+        iceServers = IceServersHandler.getIceServers();
     }
 
-    function onSdpSuccess() {}
+    iceServers = {
+        iceServers: iceServers,
+        iceTransportPolicy: 'all',
+        bundlePolicy: 'max-bundle',
+        iceCandidatePoolSize: 0
+    };
+
+    if(adapter.browserDetails.browser !== 'chrome') {
+        iceServers = {
+            iceServers: iceServers.iceServers
+        };
+    }
+
+    var offerAnswerConstraints = {
+        OfferToReceiveAudio: true,
+        OfferToReceiveVideo: true
+    };
+
+    if(adapter.browserDetails.browser === 'chrome' || adapter.browserDetails.browser === 'safari') {
+        offerAnswerConstraints = {
+            mandatory: offerAnswerConstraints,
+            optional: []
+        };
+    }
+
+    var dontDuplicateOnAddTrack = {};
+
+    function getToken() {
+        if (window.crypto && window.crypto.getRandomValues && navigator.userAgent.indexOf('Safari') === -1) {
+            var a = window.crypto.getRandomValues(new Uint32Array(3)),
+                token = '';
+            for (var i = 0, l = a.length; i < l; i++) {
+                token += a[i].toString(36);
+            }
+            return token;
+        } else {
+            return (Math.random() * new Date().getTime()).toString(36).replace(/\./g, '');
+        }
+    }
 
     function onSdpError(e) {
-        console.error('sdp error:', JSON.stringify(e, null, '\t'));
+        console.error('sdp error:', e);
     }
 
     // var offer = Offer.createOffer(config);
@@ -482,22 +492,61 @@
     // offer.addIceCandidate(candidate);
     var Offer = {
         createOffer: function (config) {
-            var peer = new RTCPeerConnection(iceServersObject, optionalArgument);
+            var peer = new RTCPeerConnection(iceServers);
 
-            if (config.stream) peer.addStream(config.stream);
+            if('addStream' in peer) {
+                peer.onaddstream = function(event) {
+                    config.onaddstream(event.stream, config.to);
+                };
 
-            peer.onaddstream = function (event) {
-                config.onaddstream(event.stream, config.to);
-            };
+                if (config.stream) {
+                    peer.addStream(config.stream);
+                }
+            }
+            else if('addTrack' in peer) {
+                peer.onaddtrack = function(event) {
+                    event.stream = event.streams.pop();
+
+                    if(dontDuplicateOnAddTrack[event.stream.id] && adapter.browserDetails.browser !== 'safari') return;
+                    dontDuplicateOnAddTrack[event.stream.id] = true;
+
+                    config.onaddstream(event.stream, config.to);
+                };
+
+                if (config.stream) {
+                    config.stream.getTracks().forEach(function(track) {
+                        peer.addTrack(track, config.stream);
+                    });
+                }
+            }
+            else {
+                throw new Error('WebRTC addStream/addTrack is not supported.');
+            }
 
             peer.onicecandidate = function (event) {
                 config.onicecandidate(event.candidate, config.to);
             };
 
-            peer.createOffer(function (sdp) {
-                peer.setLocalDescription(sdp);
-                config.onsdp(sdp, config.to);
-            }, onSdpError, offerAnswerConstraints);
+            peer.oniceconnectionstatechange = peer.onsignalingstatechange = function() {
+                if (peer && peer.iceConnectionState && peer.iceConnectionState.search(/disconnected|closed|failed/gi) !== -1) {
+                    if(peers[config.to]) {
+                        delete peers[config.to];
+                    }
+
+                    if (config.onuserleft) config.onuserleft(config.to);
+                }
+            };
+
+            peer.createOffer(offerAnswerConstraints).then(function (sdp) {
+                // https://github.com/muaz-khan/RTCMultiConnection/blob/master/dev/CodecsHandler.js
+                if(typeof CodecsHandler !== 'undefined') {
+                    sdp.sdp = CodecsHandler.preferCodec(sdp.sdp, 'vp9');
+                }
+
+                peer.setLocalDescription(sdp).then(function() {
+                    config.onsdp(sdp, config.to)
+                }).catch(onSdpError);
+            }).catch(onSdpError);
 
             function sdpCallback() {
                 config.onsdp(peer.localDescription, config.to);
@@ -508,7 +557,7 @@
             return this;
         },
         setRemoteDescription: function (sdp) {
-            this.peer.setRemoteDescription(new RTCSessionDescription(sdp), onSdpSuccess, onSdpError);
+            this.peer.setRemoteDescription(new RTCSessionDescription(sdp)).catch(onSdpError);
         },
         addIceCandidate: function (candidate) {
             this.peer.addIceCandidate(new RTCIceCandidate({
@@ -523,23 +572,63 @@
     // answer.addIceCandidate(candidate);
     var Answer = {
         createAnswer: function (config) {
-            var peer = new RTCPeerConnection(iceServersObject, optionalArgument);
+            var peer = new RTCPeerConnection(iceServers);
 
-            if (config.stream) peer.addStream(config.stream);
+            if('addStream' in peer) {
+                peer.onaddstream = function(event) {
+                    config.onaddstream(event.stream, config.to);
+                };
 
-            peer.onaddstream = function (event) {
-                config.onaddstream(event.stream, config.to);
-            };
+                if (config.stream) {
+                    peer.addStream(config.stream);
+                }
+            }
+            else if('addTrack' in peer) {
+                peer.onaddtrack = function(event) {
+                    event.stream = event.streams.pop();
+
+                    if(dontDuplicateOnAddTrack[event.stream.id] && adapter.browserDetails.browser !== 'safari') return;
+                    dontDuplicateOnAddTrack[event.stream.id] = true;
+
+                    config.onaddstream(event.stream, config.to);
+                };
+
+                if (config.stream) {
+                    config.stream.getTracks().forEach(function(track) {
+                        peer.addTrack(track, config.stream);
+                    });
+                }
+            }
+            else {
+                throw new Error('WebRTC addStream/addTrack is not supported.');
+            }
 
             peer.onicecandidate = function (event) {
                 config.onicecandidate(event.candidate, config.to);
             };
 
-            peer.setRemoteDescription(new RTCSessionDescription(config.sdp), onSdpSuccess, onSdpError);
-            peer.createAnswer(function (sdp) {
-                peer.setLocalDescription(sdp);
-                config.onsdp(sdp, config.to);
-            }, onSdpError, offerAnswerConstraints);
+            peer.oniceconnectionstatechange = peer.onsignalingstatechange = function() {
+                if (peer && peer.iceConnectionState && peer.iceConnectionState.search(/disconnected|closed|failed/gi) !== -1) {
+                    if(peers[config.to]) {
+                        delete peers[config.to];
+                    }
+
+                    if (config.onuserleft) config.onuserleft(config.to);
+                }
+            };
+
+            peer.setRemoteDescription(new RTCSessionDescription(config.sdp)).then(function() {
+                peer.createAnswer(offerAnswerConstraints).then(function (sdp) {
+                    // https://github.com/muaz-khan/RTCMultiConnection/blob/master/dev/CodecsHandler.js
+                    if(typeof CodecsHandler !== 'undefined') {
+                        sdp.sdp = CodecsHandler.preferCodec(sdp.sdp, 'vp9');
+                    }
+
+                    peer.setLocalDescription(sdp).then(function() {
+                        config.onsdp(sdp, config.to);
+                    }).catch(onSdpError);
+                }).catch(onSdpError);
+            }).catch(onSdpError);
 
             this.peer = peer;
 
@@ -563,4 +652,27 @@
                 swapped[swapped.length] = arr[i];
         return swapped;
     }
+
+    window.addStreamStopListener = function (stream, callback) {
+        var streamEndedEvent = 'ended';
+        if ('oninactive' in stream) {
+            streamEndedEvent = 'inactive';
+        }
+        stream.addEventListener(streamEndedEvent, function() {
+            callback();
+            callback = function() {};
+        }, false);
+        stream.getAudioTracks().forEach(function(track) {
+            track.addEventListener(streamEndedEvent, function() {
+                callback();
+                callback = function() {};
+            }, false);
+        });
+        stream.getVideoTracks().forEach(function(track) {
+            track.addEventListener(streamEndedEvent, function() {
+                callback();
+                callback = function() {};
+            }, false);
+        });
+    };
 })();

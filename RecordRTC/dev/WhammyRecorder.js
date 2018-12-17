@@ -61,8 +61,8 @@ function WhammyRecorder(mediaStream, config) {
             };
         }
 
-        canvas.width = config.canvas.width;
-        canvas.height = config.canvas.height;
+        canvas.width = config.canvas.width || 320;
+        canvas.height = config.canvas.height || 240;
 
         context = canvas.getContext('2d');
 
@@ -76,11 +76,7 @@ function WhammyRecorder(mediaStream, config) {
         } else {
             video = document.createElement('video');
 
-            if (typeof video.srcObject !== 'undefined') {
-                video.srcObject = mediaStream;
-            } else {
-                video.src = URL.createObjectURL(mediaStream);
-            }
+            setSrcObject(mediaStream, video);
 
             video.onloadedmetadata = function() { // "onloadedmetadata" may NOT work in FF?
                 if (config.initCallback) {
@@ -147,15 +143,18 @@ function WhammyRecorder(mediaStream, config) {
         var i = -1,
             length = o.length;
 
-        var loop = function() {
+        (function loop() {
             i++;
             if (i === length) {
                 o.callback();
                 return;
             }
-            o.functionToLoop(loop, i);
-        };
-        loop(); //init
+
+            // "setTimeout" added by Jim McLeod
+            setTimeout(function() {
+                o.functionToLoop(loop, i);
+            }, 1);
+        })();
     }
 
 
@@ -268,6 +267,8 @@ function WhammyRecorder(mediaStream, config) {
      * });
      */
     this.stop = function(callback) {
+        callback = callback || function() {};
+
         isStopDrawing = true;
 
         var _this = this;
@@ -345,8 +346,22 @@ function WhammyRecorder(mediaStream, config) {
      * recorder.clearRecordedData();
      */
     this.clearRecordedData = function() {
-        this.pause();
+        if (!isStopDrawing) {
+            this.stop(clearRecordedDataCB);
+        }
+        clearRecordedDataCB();
+    };
+
+    function clearRecordedDataCB() {
         whammy.frames = [];
+        isStopDrawing = true;
+        isPausedRecording = false;
+    }
+
+    // for debugging
+    this.name = 'WhammyRecorder';
+    this.toString = function() {
+        return this.name;
     };
 
     var canvas = document.createElement('canvas');

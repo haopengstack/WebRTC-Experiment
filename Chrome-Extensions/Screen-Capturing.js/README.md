@@ -1,58 +1,129 @@
-# [Screen-Capturing.js](https://github.com/muaz-khan/Chrome-Extensions/tree/master/Screen-Capturing.js) / [Demo](https://www.webrtc-experiment.com/Screen-Capturing/)
+# Screen-Capturing.js / for [desktopCapture extension](https://github.com/muaz-khan/Chrome-Extensions/tree/master/desktopCapture)
 
-> Screen-Capturing.js can be used in any demo/project/library.
+* Demo: https://www.webrtc-experiment.com/Screen-Capturing/
 
-> It provides simple methods to integrate "Screen-Capturing" extension
+# How to Use?
 
-> in your own applications.
+**First Step,** download and modify [desktopCapture extension](https://github.com/muaz-khan/Chrome-Extensions/tree/master/desktopCapture)
 
->
-> It means that you don't need to use [iframe-hack](https://github.com/muaz-khan/WebRTC-Experiment/tree/master/getScreenId.js).
+Download + Modify + Publish desktopCapture extension yourselves. You need to change `matches` line the [manifest.json#L17](https://github.com/muaz-khan/Chrome-Extensions/blob/master/desktopCapture/manifest.json#L17) to refer your own domain.
 
-## How to Install/Deploy Chrome Extension?
+**Second and last step,** now use `Screen-Capturing.js` script.
 
-You can download chrome extension's full source-code from <a href="https://github.com/muaz-khan/Chrome-Extensions/tree/master/desktopCapture">this link</a> and then you need to modify "manifest.json" to add your domain name (DNS) and last step is  simply <a href="https://github.com/muaz-khan/Chrome-Extensions/tree/master/desktopCapture#how-to-publish-yourself">make ZIP</a> which should be <a href="https://developer.chrome.com/webstore/publish">deployed to Google AppStore</a>.<br><br> Though, you always having options to make CRX file or directly link the directory in developer mode however Google AppStore is preferred option.<br><br>
-Then you can use <a href="https://cdn.webrtc-experiment.com/Screen-Capturing.js">this JavaScript file</a>  in your own  project/demo/library and enjoy fast/direct capturing of the selected content's frames.<br><br>
+CDN link:
 
-1. <a href="https://chrome.google.com/webstore/detail/screen-capturing/ajhifddimkapgcifgcodmmfdlknahffk">Google AppStore deployed extension</a>
-2. <a href="https://github.com/muaz-khan/Chrome-Extensions/tree/master/desktopCapture">Source code of the extension</a>
-3. <a href="https://github.com/muaz-khan/Chrome-Extensions/tree/master/Screen-Capturing.js">Source code of Screen-Capturing.js</a>
+```html
+<script src="https://cdn.webrtc-experiment.com/Screen-Capturing.js"></script>
+<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+```
 
-## How to use Screen-Capturing.js?
+# API
+
+### `getScreenConstraints`
 
 ```javascript
-// cdn.webrtc-experiment.com/Screen-Capturing.js
-
-// advance users can directly use "getSourceId" method
-getSourceId(function(sourceId) {
-    if(sourceId != 'PermissionDeniedError') {
-        // your code here
-    }
-});
-
-// otherwise, you can use a helper method
 getScreenConstraints(function(error, screen_constraints) {
     if (error) {
         return alert(error);
     }
 
-    navigator.getUserMedia = navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-    navigator.getUserMedia({
+    if(screen_constraints.canRequestAudioTrack) {
+        // you can capture speakers
+        // getUserMedia({audio:screen_constraints})
+    }
+
+    navigator.mediaDevices.getUserMedia({
         video: screen_constraints
-    }, function(stream) {
+    }).then(function(stream) {
         var video = document.querySelector('video');
         video.src = URL.createObjectURL(stream);
         video.play();
-    }, function(error) {
+    }).catch(function(error) {
         alert(JSON.stringify(error, null, '\t'));
     });
 });
+```
 
-// if you want to check if chrome extension is installed and enabled
-isChromeExtensionAvailable(function(isAvailable) {
-    if(!isAvailable) alert('Chrome extension is either not installed or disabled.');
+### `getScreenConstraintsWithAudio`
+
+This method includes system-audio i.e. speakers as well.
+
+```javascript
+getScreenConstraintsWithAudio(function(error, screen_constraints) {
+    if (error) {
+        return alert(error);
+    }
+
+    navigator.mediaDevices.getUserMedia({
+        video: screen_constraints,
+        audio: screen_constraints // ----------- pass this line as well
+    }).then(function(stream) {
+        var video = document.querySelector('video');
+        video.src = URL.createObjectURL(stream);
+        video.play();
+    }).catch(function(error) {
+        alert(JSON.stringify(error, null, '\t'));
+    });
 });
+```
 
+### `getSourceId`
+
+```javascript
+getSourceId(function(sourceId, canRequestAudioTrack) {
+    if(sourceId != 'PermissionDeniedError') {
+        // your code here
+    }
+
+    if(canRequestAudioTrack === true) {
+        // system audio i.e. speakers are enabled
+    }
+});
+```
+
+### `getCustomSourceId`
+
+Get your own custom source-id according to requested screen formats. Supported formats are:
+
+* `window`
+* `screen`
+* `tab`
+* `audio`
+
+> Note: First parameter must be an array.
+
+```javascript
+var our_own_choices = ['tab', 'audio'];
+getCustomSourceId(our_own_choices, function(sourceId, canRequestAudioTrack) {
+    if(sourceId != 'PermissionDeniedError') {
+        // your code here
+    }
+
+    if(canRequestAudioTrack === true) {
+        // system audio i.e. speakers are enabled
+    }
+});
+```
+
+### `getSourceIdWithAudio`
+
+This method includes system-audio i.e. speakers as well.
+
+```javascript
+getSourceIdWithAudio(function(sourceId, canRequestAudioTrack) {
+    if(sourceId != 'PermissionDeniedError') {
+        // your code here
+    }
+
+    if(canRequestAudioTrack === true) {
+        // system audio i.e. speakers are enabled
+    }
+});
+```
+
+### `getChromeExtensionStatus`
+
+```javascript
 // instead of using "isChromeExtensionAvailable", you can use
 // a little bit more reliable method: "getChromeExtensionStatus"
 getChromeExtensionStatus('your-extension-id', function(status) {
@@ -74,20 +145,71 @@ getChromeExtensionStatus('your-extension-id', function(status) {
 });
 ```
 
-## If I don't want to deploy to Google AppStore?
+### `isChromeExtensionAvailable`
 
-You can try <a href="https://github.com/muaz-khan/WebRTC-Experiment/tree/master/getScreenId.js">getScreenId.js</a> which simply uses an iframe-hack to  fetch "sourceId" from "www.webrtc-experiment.com" domain. Simply link the library, and use it without any single installation!
+```javascript
+// if you want to check if chrome extension is installed and enabled
+isChromeExtensionAvailable(function(isAvailable) {
+    if(!isAvailable) alert('Chrome extension is either not installed or disabled.');
+});
+```
 
-## Credits
+----
 
-[Muaz Khan](https://github.com/muaz-khan):
+# Unable to capture screen multiple times?
 
-1. Personal Webpage: http://www.muazkhan.com
-2. Email: muazkh@gmail.com
-3. Twitter: https://twitter.com/muazkh and https://twitter.com/WebRTCWeb
-4. Google+: https://plus.google.com/+WebRTC-Experiment
-5. Facebook: https://www.facebook.com/WebRTC
+Set `sourceId=null` and now call any method/API above. You will be able to capture screen again & again.
 
-## License
+E.g.
 
-[Screen-Capturing.js](https://github.com/muaz-khan/Chrome-Extensions/tree/master/Screen-Capturing.js) are released under [MIT licence](https://www.webrtc-experiment.com/licence/) . Copyright (c) [Muaz Khan](https://plus.google.com/+MuazKhan).
+```javascript
+sourceId = null; // this line is important
+getScreenConstraints(function(error, screen_constraints) {
+    if (error) {
+        return alert(error);
+    }
+
+    navigator.mediaDevices.getUserMedia({
+        video: screen_constraints
+    }).then(function(stream) {
+        var video = document.querySelector('video');
+        video.src = URL.createObjectURL(stream);
+        video.play();
+    }).catch(function(error) {
+        alert(JSON.stringify(error, null, '\t'));
+    });
+});
+```
+
+----
+
+# Use `getScreenId.js`!
+
+* https://github.com/muaz-khan/getScreenId
+
+> getScreenId | Capture Screen on Any Domain! This script is a hack used to support single chrome extension usage on any HTTPs domain.
+
+First step, install this chrome extension:
+
+* https://chrome.google.com/webstore/detail/screen-capturing/ajhifddimkapgcifgcodmmfdlknahffk
+
+Now use `getScreenId.js` (on any HTTPs page):
+
+```html
+<script src="https://cdn.WebRTC-Experiment.com/getScreenId.js"></script>
+<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+<video controls autoplay></video>
+<script>
+getScreenId(function (error, sourceId, screen_constraints) {
+    navigator.mediaDevices.getUserMedia(screen_constraints).then(function (stream) {
+        document.querySelector('video').src = URL.createObjectURL(stream);
+    }).catch(function (error) {
+        console.error(error);
+    });
+});
+</script>
+```
+
+# License
+
+[Screen-Capturing.js](https://github.com/muaz-khan/Chrome-Extensions/tree/master/Screen-Capturing.js) is released under [MIT licence](https://www.webrtc-experiment.com/licence/) . Copyright (c) [Muaz Khan](https://plus.google.com/+MuazKhan).

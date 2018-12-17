@@ -1,3 +1,5 @@
+<!-- Demo version: 2017.08.06 -->
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -75,6 +77,9 @@
 
             <br><br>
             Old pre-recorded media streaming demo is <a href="https://github.com/muaz-khan/WebRTC-Experiment/tree/master/Pre-recorded-Media-Streaming">available here</a>.
+
+            <br><br>
+            The person who opens room, will select a WebM file. This demo will read your WebM file and generate a MediaStream object. The resulting MediaStream object will be shared with other users in realtime using WebRTC RTCPeerConnection API.
         </blockquote>
 
         <section class="experiment">
@@ -89,19 +94,17 @@
             <div id="videos-container"></div>
         </section>
 
-        <!-- <script src="/dist/rmc3.min.js"></script> -->
-        <script src="https://cdn.webrtc-experiment.com:443/rmc3.min.js"></script>
+        <script src="/dist/RTCMultiConnection.min.js"></script>
+        <script src="/socket.io/socket.io.js"></script>
 
-        <!-- <script src="/dist/rmc3.min.js"></script> -->
-        <script src="https://cdn.webrtc-experiment.com:443/rmc3.fbr.min.js"></script>
+        <script src="https://cdn.webrtc-experiment.com:443/FileBufferReader.js"></script>
 
         <!-- custom layout for HTML5 audio/video elements -->
         <script src="https://cdn.webrtc-experiment.com/getMediaElement.js"></script>
 
-        <!-- socket.io for signaling -->
-        <script src="/socket.io/socket.io.js"></script>
-
         <script>
+            var connection = new RTCMultiConnection(); // to get window.DetectRTC object
+            
             // ......................................................
             // .......................UI Code........................
             // ......................................................
@@ -109,10 +112,15 @@
             function oldBrowserDetected() {
                 document.getElementById('open-room').disabled = true;
                 document.getElementById('join-room').disabled = true;
-                document.querySelector('blockquote').innerHTML = 'Your browser does NOT supports pre-recorded media streaming.<br><br><span style="color:red;">This demo requires Chrome 53+ or Firefox.</span>';
+
+                if(DetectRTC.browser.name == 'Chrome' && DetectRTC.browser.version >= 53) {
+                    document.querySelector('blockquote').innerHTML = 'Please enable this flag: <a href="chrome://flags/#enable-experimental-web-platform-features">chrome://flags/#enable-experimental-web-platform-features</a>';
+                } else {
+                    document.querySelector('blockquote').innerHTML = 'Your browser does NOT supports pre-recorded media streaming.<br><br><span style="color:red;">This demo requires Chrome 53+ or Firefox (only on Mac).';
+                }
             }
 
-            if(!DetectRTC.isVideoSupportsStreamCapturing) {
+            if(DetectRTC.isVideoSupportsStreamCapturing !== true) {
                 oldBrowserDetected();
             }
 
@@ -120,6 +128,7 @@
                 disableInputButtons();
 
                 var selector = new FileSelector();
+                selector.accept = '*.webm'; // webm or mp4 or mp3 or wav or ogg
                 selector.selectSingleFile(function(file) {
                     if(file.name.search(/.webm|.mp3/g) === -1) {
                         document.getElementById('open-room').disabled = false;
@@ -140,13 +149,13 @@
 
                         try {
                             if('captureStream' in video) {
-                                connection.preRecorededStream = video.captureStream(15);
+                                connection.preRecorededStream = video.captureStream();
                             }
                             else if('mozCaptureStream' in video) {
-                                connection.preRecorededStream = video.mozCaptureStream(15);
+                                connection.preRecorededStream = video.mozCaptureStream();
                             }
                             else if('webkitCaptureStream' in video) {
-                                connection.preRecorededStream = video.webkitCaptureStream(15);
+                                connection.preRecorededStream = video.webkitCaptureStream();
                             }
                         }
                         catch(e) {
@@ -158,13 +167,18 @@
                             return;
                         }
 
+                        var stream = new MediaStream();
+                        connection.preRecorededStream.getTracks().forEach(function(track) {
+                            stream.addTrack(track);
+                        });
+
                         // attach pre-recorded steam
-                        connection.attachStreams.push(connection.preRecorededStream);
+                        connection.attachStreams.push(stream);
                         connection.onstream({
                             userid: connection.userid,
                             extra: connection.extra,
                             type: 'local',
-                            stream: connection.preRecorededStream,
+                            stream: stream,
                             mediaElement: video
                         });
 
@@ -183,8 +197,6 @@
             // ......................................................
             // ..................RTCMultiConnection Code.............
             // ......................................................
-
-            var connection = new RTCMultiConnection();
 
             connection.dontCaptureUserMedia = true;
 

@@ -1,36 +1,75 @@
 # Installation Guide
 
-> This page explains how to install RTCMultiConnection v3.
+> This page explains how to install RTCMultiConnection.
 
 * Youtube Video: [NPM install](https://www.youtube.com/watch?v=EtsiYEW_T8Y) or [Other Videos](https://www.youtube.com/watch?v=EtsiYEW_T8Y&list=PLPRQUXAnRydKdyun-vjKPMrySoow2N4tl)
 
-Or fetch latest code via github:
+# Fetch from Github
+
+> Github is strongly recommended. NPM or TAR are secondary options.
 
 ```sh
-git clone https://github.com/muaz-khan/RTCMultiConnection.git ./RTCMultiConnection
-cd RTCMultiConnection
-sudo npm install --save-dev
+git clone https://github.com/muaz-khan/RTCMultiConnection.git ./
+npm install --production
 ```
 
-Or wget/TAR:
+Or download ZIP:
 
 ```sh
-mkdir RTCMultiConnection-v3
-cd RTCMultiConnection-v3
-wget http://dl.webrtc-experiment.com/rtcmulticonnection-v3.tar.gz
-tar -zxvf rtcmulticonnection-v3.tar.gz
-ls -a
+wget https://github.com/muaz-khan/RTCMultiConnection/archive/master.zip
+unzip master.zip
 ```
 
-* [rtcmulticonnection-v3.tar.gz](http://dl.webrtc-experiment.com/rtcmulticonnection-v3.tar.gz)
+Then call `npm install --production`.
 
-To TEST:
+Use `--production` to skip `grunt` dependencies. You don't need `grunt` until you modify library itself.
+
+# Install using NPM or Bower
+
+
+```sh
+npm install rtcmulticonnection --production
+
+# or
+bower install rtcmulticonnection
+```
+
+# Run `server.js`
 
 ```sh
 node server.js
 ```
 
-## Stop Old Processes
+Now open `http://localhost:9001/`.
+
+# Modify config.json
+
+* https://github.com/muaz-khan/RTCMultiConnection/blob/master/config.json
+
+```json
+{
+  "socketURL": "/",
+  "socketMessageEvent": "abcdef",
+  "socketCustomEvent": "ghijkl",
+  "port": "443",
+  "enableLogs": "false",
+  "autoRebootServerOnFailure": "false",
+  "isUseHTTPs": "true",
+  "ssl_key": "/ssl/certificate.key",
+  "ssl_cert": "/ssl/certificate.crt",
+  "ssl_cabundle": "/ssl/certificate.cabundle"
+}
+```
+
+Now run `server.js` and it will automatically use above configuration.
+
+# How to check if server is running correctly?
+
+Open this URL: `https://localhost:9001/socket.io/socket.io.js`
+
+If you can load `/socket.io/socket.io.js` on your server then it is working fine.
+
+# Stop Old Processes
 
 Check all processes running on port `9001` and stop process by `id`:
 
@@ -45,9 +84,22 @@ Or stop all processes on a specific port. (It may require `sudo` privileges):
 fuser -vk 9001/tcp
 ```
 
-Now open: `https://localhost:9001/`
+Now open: `http://localhost:9001/`
 
-## Keep running server in background
+## Keep running server in background using `pm2`
+
+``sh
+npm install pm2 -g
+pm2 startup  
+pm2 start server.js
+pm2 save
+```
+
+Now `server.js` will auto restart on failure. Even auto run as soon as operating system reboots.
+
+For more info about `pm2` please check [this link](https://github.com/Unitech/pm2).
+
+## Keep running server in background usnig `nohup`
 
 ```sh
 nohup nodejs server.js > /dev/null 2>&1 &
@@ -95,10 +147,6 @@ More info about `forever-service` [here](http://stackoverflow.com/a/36027516/552
 6. [How to write iOS/Android applications?](https://github.com/muaz-khan/RTCMultiConnection/tree/master/docs/ios-android.md)
 7. [Tips & Tricks](https://github.com/muaz-khan/RTCMultiConnection/blob/master/docs/tips-tricks.md)
 
-## Twitter
-
-* https://twitter.com/WebRTCWeb i.e. @WebRTCWeb
-
 ## License
 
-[RTCMultiConnection](https://github.com/muaz-khan/RTCMultiConnection) is released under [MIT licence](https://github.com/muaz-khan/RTCMultiConnection/blob/master/LICENSE.md) . Copyright (c) [Muaz Khan](http://www.MuazKhan.com/).
+[RTCMultiConnection](https://github.com/muaz-khan/RTCMultiConnection) is released under [MIT licence](https://github.com/muaz-khan/RTCMultiConnection/blob/master/LICENSE.md) . Copyright (c) [Muaz Khan](https://MuazKhan.com/).

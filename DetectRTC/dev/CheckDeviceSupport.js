@@ -8,9 +8,14 @@ if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
     // Firefox 38+ seems having support of enumerateDevices
     // Thanks @xdumaine/enumerateDevices
     navigator.enumerateDevices = function(callback) {
-        navigator.mediaDevices.enumerateDevices().then(callback).catch(function() {
+        var enumerateDevices = navigator.mediaDevices.enumerateDevices();
+        if (enumerateDevices && enumerateDevices.then) {
+            navigator.mediaDevices.enumerateDevices().then(callback).catch(function() {
+                callback([]);
+            });
+        } else {
             callback([]);
-        });
+        }
     };
 }
 
@@ -61,11 +66,29 @@ function checkDeviceSupport(callback) {
     audioOutputDevices = [];
     videoInputDevices = [];
 
+    hasMicrophone = false;
+    hasSpeakers = false;
+    hasWebcam = false;
+
+    isWebsiteHasMicrophonePermissions = false;
+    isWebsiteHasWebcamPermissions = false;
+
+    // to prevent duplication
+    var alreadyUsedDevices = {};
+
     navigator.enumerateDevices(function(devices) {
         devices.forEach(function(_device) {
             var device = {};
             for (var d in _device) {
-                device[d] = _device[d];
+                try {
+                    if (typeof _device[d] !== 'function') {
+                        device[d] = _device[d];
+                    }
+                } catch (e) {}
+            }
+
+            if (alreadyUsedDevices[device.deviceId + device.label + device.kind]) {
+                return;
             }
 
             // if it is MediaStreamTrack.getSources
@@ -77,17 +100,6 @@ function checkDeviceSupport(callback) {
                 device.kind = 'videoinput';
             }
 
-            var skip;
-            MediaDevices.forEach(function(d) {
-                if (d.id === device.id && d.kind === device.kind) {
-                    skip = true;
-                }
-            });
-
-            if (skip) {
-                return;
-            }
-
             if (!device.deviceId) {
                 device.deviceId = device.id;
             }
@@ -97,13 +109,25 @@ function checkDeviceSupport(callback) {
             }
 
             if (!device.label) {
-                device.label = 'Please invoke getUserMedia once.';
-                if (location.protocol !== 'https:') {
-                    if (document.domain.search && document.domain.search(/localhost|127.0./g) === -1) {
+                device.isCustomLabel = true;
+
+                if (device.kind === 'videoinput') {
+                    device.label = 'Camera ' + (videoInputDevices.length + 1);
+                } else if (device.kind === 'audioinput') {
+                    device.label = 'Microphone ' + (audioInputDevices.length + 1);
+                } else if (device.kind === 'audiooutput') {
+                    device.label = 'Speaker ' + (audioOutputDevices.length + 1);
+                } else {
+                    device.label = 'Please invoke getUserMedia once.';
+                }
+
+                if (typeof DetectRTC !== 'undefined' && DetectRTC.browser.isChrome && DetectRTC.browser.version >= 46 && !/^(https:|chrome-extension:)$/g.test(location.protocol || '')) {
+                    if (typeof document !== 'undefined' && typeof document.domain === 'string' && document.domain.search && document.domain.search(/localhost|127.0./g) === -1) {
                         device.label = 'HTTPs is required to get label of this ' + device.kind + ' device.';
                     }
                 }
             } else {
+                // Firefox on Android still returns empty label
                 if (device.kind === 'videoinput' && !isWebsiteHasWebcamPermissions) {
                     isWebsiteHasWebcamPermissions = true;
                 }
@@ -138,10 +162,9 @@ function checkDeviceSupport(callback) {
             }
 
             // there is no 'videoouput' in the spec.
+            MediaDevices.push(device);
 
-            if (MediaDevices.indexOf(device) === -1) {
-                MediaDevices.push(device);
-            }
+            alreadyUsedDevices[device.deviceId + device.label + device.kind] = device;
         });
 
         if (typeof DetectRTC !== 'undefined') {
@@ -164,6 +187,3 @@ function checkDeviceSupport(callback) {
         }
     });
 }
-
-// check for microphone/camera support!
-checkDeviceSupport();

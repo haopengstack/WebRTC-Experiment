@@ -1,3 +1,5 @@
+# WebRTC Signaling
+
 You can use any signaling implementation with any [WebRTC Experiment](https://www.webrtc-experiment.com/); whether it is XMPP/SIP or PHP/MySQL or Socket.io/WebSockets or WebSync/SignalR or PeerServer/SignalMaster or other gateway.
 
 Remember, there are some built-in implementations:
@@ -6,15 +8,13 @@ Remember, there are some built-in implementations:
 2. [DataChanel.js and Reliable Signaling](https://github.com/muaz-khan/Reliable-Signaler/tree/master/datachannel-client)
 1. [Socket.io over Node.js](https://github.com/muaz-khan/WebRTC-Experiment/tree/master/socketio-over-nodejs)
 2. [WebSocket over Node.js](https://github.com/muaz-khan/WebRTC-Experiment/tree/master/websocket-over-nodejs)
-3. [WebSync for Signaling](https://github.com/muaz-khan/WebSync-Signaling) — useful only for .NET developers
-4. [XHR/XMLHttpRequest Signaling](https://github.com/muaz-khan/XHR-Signaling) — useful for both .NET and PHP developers!
-5. [RTCMultiConnection-v3.0](https://github.com/muaz-khan/RTCMultiConnection/tree/master/RTCMultiConnection-v3.0) / [Demo](https://rtcmulticonnection.herokuapp.com/)
+3. [WebSync for Signaling](https://github.com/muaz-khan/WebSync-Signaling) ï¿½ useful only for .NET developers
+4. [XHR/XMLHttpRequest Signaling](https://github.com/muaz-khan/XHR-Signaling) ï¿½ useful for both .NET and PHP developers!
+5. [RTCMultiConnection](https://github.com/muaz-khan/RTCMultiConnection) / [Demo](https://rtcmulticonnection.herokuapp.com/)
 
 If you wanna understand basics of WebRTC signaling; then scroll to bottom and check [this section](https://github.com/muaz-khan/WebRTC-Experiment/blob/master/Signaling.md#a-few-other-resources).
 
-=
-
-##### Nodejs/Socketio Server-Side Code
+# Nodejs/Socketio Server-Side Code
 
 Your server side code can be as simple as possible like this:
 
@@ -34,9 +34,7 @@ You can even use existing services like (for server side code only!):
 4. http://millermedeiros.github.io/js-signals/
 5. https://github.com/sockjs/sockjs-client
 
-=
-
-#### Browser side coding?
+# Browser side coding?
 
 There are dozens of WebRTC Experiments and Libraries; you can use any existing signaling server with any WebRTC Experiment/Library!
 
@@ -47,11 +45,9 @@ You just need to understand how signaling is implemented in WebRTC Experiments:
 
 Now you understood how default implementations can be overridden; it is time to understand how to override for any signaling implementation exists out there!
 
-=
+# Example code to explain how to override `openSignalingChannel`
 
-#### Example code to explain how to override `openSignalingChannel`
-
-###### First Step: Initialize a global array-like object
+## First Step: Initialize a global array-like object
 
 This array-like object will store `onmessage` callbacks.
 
@@ -59,7 +55,7 @@ This array-like object will store `onmessage` callbacks.
 var onMessageCallbacks = {};
 ```
 
-###### Second Step: Initialize Signaling Server
+## Second Step: Initialize Signaling Server
 
 ```javascript
 var websocket = new WebSocket('wss://something:port/');
@@ -73,7 +69,7 @@ For socket.io; you can pass default channel as URL parameter:
 var socket = io.connect('https://domain:port/?channel=' + connection.channel);
 ```
 
-###### 3rd Step: Subscribe to server messages
+## 3rd Step: Subscribe to server messages
 
 Capture server messages:
 
@@ -106,7 +102,7 @@ function onMessageCallBack(data) {
 }
 ```
 
-###### 4th and final Step: Override `openSignalingChannel` method
+## 4th and final Step: Override `openSignalingChannel` method
 
 ```javascript
 connection.openSignalingChannel = function (config) {
@@ -129,9 +125,7 @@ connection.openSignalingChannel = function (config) {
 
 Read more [here](https://github.com/muaz-khan/WebRTC-Experiment/issues/180#issuecomment-38318694).
 
-=
-
-##### `openSignalingChannel` for [RTCMultiConnection.js](http://www.RTCMultiConnection.org/docs/) and [DataChanel.js](https://github.com/muaz-khan/WebRTC-Experiment/tree/master/DataChannel) (Client-Side Code)
+# `openSignalingChannel` for [RTCMultiConnection.js](https://github.com/muaz-khan/RTCMultiConnection) and [DataChanel.js](https://github.com/muaz-khan/DataChannel) (Client-Side Code)
 
 Putting above 4-steps together! Here is your browser side code that overrides default signaling implementations:
 
@@ -141,7 +135,7 @@ var socketio = io.connect('http://localhost:8888/');
 
 socketio.on('message', function(data) {
     if(data.sender == connection.userid) return;
-    
+
     if (onMessageCallbacks[data.channel]) {
         onMessageCallbacks[data.channel](data.message);
     };
@@ -165,9 +159,7 @@ connection.openSignalingChannel = function (config) {
 };
 ```
 
-=
-
-##### `openSocket` for all standalone WebRTC Experiments
+# `openSocket` for all standalone WebRTC Experiments
 
 ```javascript
 var onMessageCallbacks = {};
@@ -176,7 +168,7 @@ var socketio = io.connect('http://localhost:8888/');
 
 socketio.on('message', function(data) {
     if(data.sender == currentUserUUID) return;
-    
+
     if (onMessageCallbacks[data.channel]) {
         onMessageCallbacks[data.channel](data.message);
     };
@@ -202,9 +194,7 @@ var config = {
 };
 ```
 
-=
-
-##### "Any WebSocket Server!" for Signaling
+# "Any WebSocket Server!" for Signaling
 
 ```javascript
 // global stuff
@@ -214,9 +204,9 @@ var websocket = new WebSocket('ws://localhost:8888/');
 
 websocket.onmessage =  function(e) {
     data = JSON.parse(e.data);
-    
+
     if(data.sender == currentUserUUID) return;
-    
+
     if (onMessageCallbacks[data.channel]) {
         onMessageCallbacks[data.channel](data.message);
     };
@@ -234,7 +224,7 @@ connection.openSignalingChannel = function (config) {
     onMessageCallbacks[channel] = config.onmessage;
 
     if (config.onopen) setTimeout(config.onopen, 1000);
-    
+
     // directly returning socket object using "return" statement
     return {
         send: function (message) {
@@ -249,15 +239,13 @@ connection.openSignalingChannel = function (config) {
 };
 ```
 
-=
-
-##### A few points to remember:
+# A few points to remember:
 
 1. The object returned by overridden `openSignalingChannel` or `openSocket` method MUST return an object with two things:
 
    1. `send` method. Used to send data via signaling gateway.
    2. `channel` object. Used for video-conferencing. If you skip it; it will make one-to-many instead of many-to-many.
-   
+
 2. `onmessage` or `on('message', callback)` MUST have same code as you can see a few lines above.
 
 `openSocket` method can return `socket` object in three ways:
@@ -268,7 +256,7 @@ connection.openSignalingChannel = function (config) {
 
 Second option i.e. `config.callback` is preferred.
 
-##### First Option
+## First Option
 
 ```javascript
  var config = {
@@ -290,7 +278,7 @@ Second option i.e. `config.callback` is preferred.
  };
 ```
 
-##### Second Option
+## Second Option
 
 ```javascript
  var config = {
@@ -323,7 +311,7 @@ Second option i.e. `config.callback` is preferred.
  };
 ```
 
-##### Third Option
+## Third Option
 
 ```javascript
  var config = {
@@ -341,9 +329,7 @@ Second option i.e. `config.callback` is preferred.
  };
 ```
 
-=
-
-##### How to use [WebSync for Signaling](https://github.com/muaz-khan/WebSync-Signaling)?
+# How to use [WebSync for Signaling](https://github.com/muaz-khan/WebSync-Signaling)?
 
 ```html
 <script src="fm.js"> </script>
@@ -415,9 +401,7 @@ document.getElementById('open-new-session').onclick = function() {
 };
 ```
 
-=
-
-##### How to use SignalR for Signaling?
+# How to use SignalR for Signaling?
 
 **First Step:** Create Hub class:
 
@@ -474,9 +458,7 @@ connection.openSignalingChannel = function (config) {
 };
 ```
 
-=
-
-##### Room Presence Detection
+# Room Presence Detection
 
 [Using Firebase](https://github.com/muaz-khan/WebRTC-Experiment/issues/38#issuecomment-20527305):
 
@@ -491,7 +473,7 @@ new window.Firebase('https://' + connection.firebase + '.firebaseIO.com/' + conn
 });
 ```
 
-#### [Using Socket.io over Node.js](https://github.com/muaz-khan/WebRTC-Experiment/issues/38#issuecomment-18821960):
+[Using Socket.io over Node.js](https://github.com/muaz-khan/WebRTC-Experiment/issues/38#issuecomment-18821960):
 
 ```javascript
 var socket = io.connect('/');
@@ -508,7 +490,7 @@ socket.emit('presence', channel);
 
 Socket.io over Node.js demos can be found [here](https://github.com/muaz-khan/WebRTC-Experiment/blob/master/socketio-over-nodejs).
 
-#### Using WebSocket over Node.js
+[Using WebSocket over Node.js](https://github.com/muaz-khan/WebRTC-Experiment/blob/master/websocket-over-nodejs)
 
 ```javascript
 var SIGNALING_SERVER = 'wss://wsnodejs.nodejitsu.com:443';
@@ -516,7 +498,7 @@ var websocket = new WebSocket(SIGNALING_SERVER);
 
 websocket.onmessage = function (event) {
     var data = JSON.parse(event.data);
-  
+
     if (data.isChannelPresent == false) {
         connection.open(connection.sessionid);
     } else {
@@ -534,12 +516,10 @@ websocket.onopen = function () {
 
 WebSocket over Node.js demos can be found [here](https://github.com/muaz-khan/WebRTC-Experiment/blob/master/websocket-over-nodejs).
 
-=
-
-##### XHR/XMLHttpRequest for Signaling
+# XHR/XMLHttpRequest for Signaling
 
 ```javascript
-// database has a single table; which has two columns: 
+// database has a single table; which has two columns:
 // 1) Message (required to store JSON data)
 // 2) ID (optional: as primary key)
 
@@ -625,23 +605,21 @@ Source code is available here: https://github.com/muaz-khan/XHR-Signaling
 
 Remember: You can use same code JavaScript code both for PHP and ASP.NET.
 
-=
+# Server Sent Events (SSE) over PHP
+
+* https://github.com/muaz-khan/RTCMultiConnection/tree/master/demos/SSEConnection
 
 You can find many other good examples here:
 
 http://www.RTCMultiConnection.org/docs/openSignalingChannel/
 
-=
-
-##### A few other resources:
+# A few other resources:
 
 1. https://www.webrtc-experiment.com/docs/WebRTC-Signaling-Concepts.html
 2. http://www.RTCMultiConnection.org/FAQ/
 3. http://www.RTCMultiConnection.org/docs/sessionid/
 4. http://www.RTCMultiConnection.org/docs/channel-id/
 
-=
+# License
 
-##### License
-
-[WebRTC Experiments](https://www.webrtc-experiment.com/) are released under [MIT licence](https://www.webrtc-experiment.com/licence/) . Copyright (c) [Muaz Khan](https://plus.google.com/+MuazKhan).
+[WebRTC Experiments](https://www.webrtc-experiment.com/) are released under [MIT licence](https://www.webrtc-experiment.com/licence/) . Copyright (c) [Muaz Khan](http://www.muazkhan.com/).

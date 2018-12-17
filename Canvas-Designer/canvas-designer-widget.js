@@ -25,7 +25,35 @@ function CanvasDesigner() {
         quadratic: true,
         text: true,
         image: true,
-        marker: true
+        pdf: true,
+        marker: true,
+        zoom: true,
+        lineWidth: true,
+        colorsPicker: true,
+        extraOptions: true,
+        code: true
+    };
+
+    designer.icons = {
+        line: null,
+        arrow: null,
+        pencil: null,
+        dragSingle: null,
+        dragMultiple: null,
+        eraser: null,
+        rectangle: null,
+        arc: null,
+        bezier: null,
+        quadratic: null,
+        text: null,
+        image: null,
+        pdf: null,
+        marker: null,
+        zoom: null,
+        lineWidth: null,
+        colorsPicker: null,
+        extraOptions: null,
+        code: null
     };
 
     var selectedIcon = 'pencil';
@@ -40,17 +68,32 @@ function CanvasDesigner() {
 
     var syncDataListener = function(data) {};
     var dataURLListener = function(dataURL) {};
+    var captureStreamCallback = function() {};
 
     function onMessage(event) {
         if (!event.data || event.data.uid !== designer.uid) return;
 
+        if(!!event.data.sdp) {
+            webrtcHandler.createAnswer(event.data, function(response) {
+                if(response.sdp) {
+                    designer.postMessage(response);
+                    return;
+                }
+
+                captureStreamCallback(response.stream);
+            });
+            return;
+        }
+
         if (!!event.data.canvasDesignerSyncData) {
             designer.pointsLength = event.data.canvasDesignerSyncData.points.length;
             syncDataListener(event.data.canvasDesignerSyncData);
+            return;
         }
 
         if (!!event.data.dataURL) {
             dataURLListener(event.data.dataURL);
+            return;
         }
     }
 
@@ -71,7 +114,7 @@ function CanvasDesigner() {
 
     designer.appendTo = function(parentNode) {
         designer.iframe = document.createElement('iframe');
-        designer.iframe.src = designer.widgetHtmlURL + '?widgetJsURL=' + designer.widgetJsURL + '&tools=' + JSON.stringify(tools) + '&selectedIcon=' + selectedIcon;
+        designer.iframe.src = designer.widgetHtmlURL + '?widgetJsURL=' + designer.widgetJsURL + '&tools=' + JSON.stringify(tools) + '&selectedIcon=' + selectedIcon + '&icons=' + JSON.stringify(designer.icons);
         designer.iframe.style.width = '100%';
         designer.iframe.style.height = '100%';
         designer.iframe.style.border = 0;
@@ -139,6 +182,15 @@ function CanvasDesigner() {
 
         message.uid = designer.uid;
         designer.iframe.contentWindow.postMessage(message, '*');
+    };
+
+    designer.captureStream = function(callback) {
+        if (!designer.iframe) return;
+
+        captureStreamCallback = callback;
+        designer.postMessage({
+            captureStream: true
+        });
     };
 
     designer.widgetHtmlURL = 'widget.html';

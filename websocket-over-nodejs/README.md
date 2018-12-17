@@ -1,4 +1,4 @@
-# [WebSocket over Node.js](https://github.com/muaz-khan/WebRTC-Experiment/blob/master/websocket-over-nodejs) / [Demo](https://www.webrtc-experiment.com/websocket/) 
+# [WebSocket over Node.js](https://github.com/muaz-khan/WebRTC-Experiment/blob/master/websocket-over-nodejs) / [Demo](https://www.webrtc-experiment.com/FileBufferReader/) 
 
 [![npm](https://img.shields.io/npm/v/websocket-over-nodejs.svg)](https://npmjs.org/package/websocket-over-nodejs) [![downloads](https://img.shields.io/npm/dm/websocket-over-nodejs.svg)](https://npmjs.org/package/websocket-over-nodejs)
 
@@ -18,8 +18,10 @@ You can see three node.js files:
 
 Following code explains how to override [`openSignalingChannel`](http://www.rtcmulticonnection.org/docs/openSignalingChannel/) method in your HTML pages; `openSignalingChannel` is useful only for RTCMultiConnection.js and DataChannel.js. For other WebRTC Experiments, please check next section.
 
+Public free server: https://webrtcweb.com:9449/
+
 ```javascript
-var SIGNALING_SERVER = 'wss://webrtc-signaling.herokuapp.com:443/ws/';
+var SIGNALING_SERVER = 'wss://webrtcweb.com:9449/';
 connection.openSignalingChannel = function(config) {
     config.channel = config.channel || this.channel;
     var websocket = new WebSocket(SIGNALING_SERVER);
@@ -49,8 +51,10 @@ connection.openSignalingChannel = function(config) {
 
 `openSocket` is used in all standalone WebRTC Experiments. You can define this method in your `ui.js` file or in your HTML page.
 
+Public free server: https://webrtcweb.com:9449/
+
 ```javascript
-var SIGNALING_SERVER = 'wss://webrtc-signaling.herokuapp.com:443/ws/';
+var SIGNALING_SERVER = 'wss://webrtcweb.com:9449/';
 var config = {
     openSocket = function (config) {
         config.channel = config.channel || 'main-public-channel';
@@ -89,7 +93,7 @@ You can detect presence of any channel/room; and invoke open/join methods accord
 // use "channel" as sessionid or use custom sessionid!
 var roomid = connection.channel;
 
-var SIGNALING_SERVER = 'wss://webrtc-signaling.herokuapp.com:443/ws/';
+var SIGNALING_SERVER = 'wss://webrtcweb.com:9449/';
 var websocket = new WebSocket(SIGNALING_SERVER);
 
 websocket.onmessage = function (event) {
@@ -131,7 +135,7 @@ and run the `signaler.js` nodejs file:
 node node_modules/websocket-over-nodejs/signaler.js
 ```
 
-Now, you can open port "12034" on your ip address/domain; or otherwise on localhost: `http://localhost:12034/`
+Now, you can open port "9449" on your ip address/domain; or otherwise on localhost: `http://localhost:9449/`
 
 # Install on Linux/Ubuntu/CentOS/Debian/Mac etc.
 
@@ -143,7 +147,7 @@ mkdir websocket-over-nodejs
 cd websocket-over-nodejs
 
 # get package
-wget http://dl.webrtc-experiment.com/websocket-over-nodejs.tar
+wget http://webrtcweb.com/websocket-over-nodejs.tar
 
 # extract package
 tar -xf websocket-over-nodejs.tar
@@ -152,14 +156,18 @@ tar -xf websocket-over-nodejs.tar
 node signaler.js
 ```
 
-Now, you can open port `12034` on your ip address/domain; or otherwise on localhost: `http://localhost:12034/`
+# Download ZIP on windows
 
-It is using port `12034`; you can edit this port using following commands:
+http://webrtcweb.com/websocket-over-nodejs.zip
+
+Now, you can open port `9449` on your ip address/domain; or otherwise on localhost: `http://localhost:9449/`
+
+It is using port `9449`; you can edit this port using following commands:
 
 ```
 vi signaler.js
 
-# now edit port 12034
+# now edit port 9449
 # and save changes & quit
 
 # press "insert" key; then press "Esc" key and the type
@@ -177,13 +185,13 @@ Common Error: `Error: listen EADDRINUSE`. It means that same port is used by ano
 
 ```
 // list all active processes running on same port
-sudo fuser -v 12034/tcp
+sudo fuser -v 9449/tcp
 
-// kill all processes running on port "12034"
-sudo fuser -vk 12034/tcp
+// kill all processes running on port "9449"
+sudo fuser -vk 9449/tcp
 
 // list again to verify closing ports
-sudo fuser -v 12034/tcp
+sudo fuser -v 9449/tcp
 ```
 
 You can delete "directory" and re-install:
@@ -202,19 +210,6 @@ Warning: Native modules not compiled.  XOR performance will be degraded.
 Warning: Native modules not compiled.  UTF-8 validation disabled.
 ```
 
-# Download ZIP on windows
-
-http://dl.webrtc-experiment.com/websocket-over-nodejs.zip
-
-# Test Demos
-
-```
-// replace "localhost" with your domain name!
-http://localhost:12034/index.html
-http://localhost:12034/one-to-one-peerconnection.html
-http://localhost:12034/text-chat-with-simple-websocket.html
-```
-
 # Signaler.js or SSL.js
 
 ```javascript
@@ -222,7 +217,7 @@ http://localhost:12034/text-chat-with-simple-websocket.html
 var channelName = location.href.replace(/\/|:|#|%|\.|\[|\]/g, ''); // using URL as room-name
 
 // setting up websocket connection
-var websocket = new WebSocket('ws://localhost:12034');
+var websocket = new WebSocket('ws://localhost:9449');
 
 // capturing "onopen" event
 websocket.onopen = function () {

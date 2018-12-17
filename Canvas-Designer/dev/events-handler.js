@@ -1,7 +1,7 @@
 var canvas = tempContext.canvas,
     isTouch = 'createTouch' in document;
 
-addEvent(canvas, isTouch ? 'touchstart' : 'mousedown', function(e) {
+addEvent(canvas, isTouch ? 'touchstart mousedown' : 'mousedown', function(e) {
     if (isTouch) e = e.pageX ? e : e.touches.length ? e.touches[0] : {
         pageX: 0,
         pageY: 0
@@ -19,17 +19,42 @@ addEvent(canvas, isTouch ? 'touchstart' : 'mousedown', function(e) {
     else if (cache.isEraser) eraserHandler.mousedown(e);
     else if (cache.isText) textHandler.mousedown(e);
     else if (cache.isImage) imageHandler.mousedown(e);
+    else if (cache.isPdf) pdfHandler.mousedown(e);
     else if (cache.isArrow) arrowHandler.mousedown(e);
     else if (cache.isMarker) markerHandler.mousedown(e);
 
-    drawHelper.redraw();
+    !cache.isPdf && drawHelper.redraw();
+
+    preventStopEvent(e);
 });
 
-addEvent(canvas, isTouch ? 'touchend' : 'mouseup', function(e) {
-    if (isTouch) e = e.pageX ? e : e.touches.length ? e.touches[0] : {
-        pageX: 0,
-        pageY: 0
-    };
+function preventStopEvent(e) {
+    if (!e) {
+        return;
+    }
+
+    if (typeof e.preventDefault === 'function') {
+        e.preventDefault();
+    }
+
+    if (typeof e.stopPropagation === 'function') {
+        e.stopPropagation();
+    }
+}
+
+addEvent(canvas, isTouch ? 'touchend touchcancel mouseup' : 'mouseup', function(e) {
+    if (isTouch && (!e || !('pageX' in e))) {
+        if (e && e.touches && e.touches.length) {
+            e = e.touches[0];
+        } else if (e && e.changedTouches && e.changedTouches.length) {
+            e = e.changedTouches[0];
+        } else {
+            e = {
+                pageX: 0,
+                pageY: 0
+            }
+        }
+    }
 
     var cache = is;
 
@@ -43,13 +68,18 @@ addEvent(canvas, isTouch ? 'touchend' : 'mouseup', function(e) {
     else if (cache.isEraser) eraserHandler.mouseup(e);
     else if (cache.isText) textHandler.mouseup(e);
     else if (cache.isImage) imageHandler.mouseup(e);
+    else if (cache.isPdf) pdfHandler.mousedown(e);
     else if (cache.isArrow) arrowHandler.mouseup(e);
     else if (cache.isMarker) markerHandler.mouseup(e);
 
-    drawHelper.redraw();
+    !cache.isPdf && drawHelper.redraw();
+
+    syncPoints(is.isDragAllPaths || is.isDragLastPath ? true : false);
+
+    preventStopEvent(e);
 });
 
-addEvent(canvas, isTouch ? 'touchmove' : 'mousemove', function(e) {
+addEvent(canvas, isTouch ? 'touchmove mousemove' : 'mousemove', function(e) {
     if (isTouch) e = e.pageX ? e : e.touches.length ? e.touches[0] : {
         pageX: 0,
         pageY: 0
@@ -67,8 +97,11 @@ addEvent(canvas, isTouch ? 'touchmove' : 'mousemove', function(e) {
     else if (cache.isEraser) eraserHandler.mousemove(e);
     else if (cache.isText) textHandler.mousemove(e);
     else if (cache.isImage) imageHandler.mousemove(e);
+    else if (cache.isPdf) pdfHandler.mousedown(e);
     else if (cache.isArrow) arrowHandler.mousemove(e);
     else if (cache.isMarker) markerHandler.mousemove(e);
+
+    preventStopEvent(e);
 });
 
 var keyCode;
@@ -151,7 +184,7 @@ function onkeyup(e) {
             points.length = points.length - 1;
             drawHelper.redraw();
 
-            syncPoints(true);
+            syncPoints(is.isDragAllPaths || is.isDragLastPath ? true : false);
         }
     }
 
@@ -172,6 +205,8 @@ function onkeyup(e) {
     // Ctrl + v
     if (isControlKeyPressed && keyCode === 86 && copiedStuff.length) {
         paste();
+
+        syncPoints(is.isDragAllPaths || is.isDragLastPath ? true : false);
     }
 
     // Ending the Control Key

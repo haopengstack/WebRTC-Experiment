@@ -13,10 +13,6 @@
 </head>
 <body>
 <script src="canvas-designer-widget.js"></script>
-<script src="https://cdn.webrtc-experiment.com/rmc3.min.js"></script>
-
-<!-- socket.io for signaling -->
-<script src="https://cdn.webrtc-experiment.com/socket.io.js"></script>
 
 <style>
 * {
@@ -67,7 +63,7 @@ input {
 }
 
 .extra-controls {
-    position: absolute;
+    position: fixed;
     right: 21%;
 }
 
@@ -112,12 +108,12 @@ input {
     margin: 9px -20px;
 }
 
-#btn-undo, #btn-close-undo-popup, #btn-close-dataURL-popup, #btn-getDataURL {
+#btn-undo, #btn-close-undo-popup, #btn-close-dataURL-popup, #btn-close-comments-popup, #btn-getDataURL {
     font-size: 1.2em;
     padding: 2px 9px;
 }
 
-#btn-close-undo-popup, #btn-close-dataURL-popup {
+#btn-close-undo-popup, #btn-close-dataURL-popup, #btn-close-comments-popup {
     padding: 0 6px;
     border-radius: 50%;
     padding-bottom: 1px;
@@ -150,6 +146,32 @@ input {
     background-color: rgba(232, 229, 229, 0.17);
     color: rgb(84, 82, 82);
 }
+
+div#comments-popup {
+    width: 100%;
+    left: 0;
+    top: 0;
+    height: 100%;
+    border: 0;
+    padding: 0;
+	border-radius: 0;
+    overflow: auto;
+}
+
+#btn-comments {
+	color: red;
+	margin-top: 5px;
+	font-size: 24px;
+	text-shadow: 1px 1px white;
+}
+
+#h2-close-popup {
+	background: yellow;
+	padding: 5px 10px;
+	border-bottom: 1px solid red;
+	margin: 0;
+	color: red;
+}
 </style>
 
 <div id="widget-container" style="position: fixed;bottom: 0;right: 20%;left: 20%;height: 100%;border: 1px solid black; border-top:0; border-bottom: 0;"></div>
@@ -157,6 +179,8 @@ input {
 <div id="fade" class="black_overlay"></div>
 
 <div id="action-controls" style="width: 19%; padding: 1%;position: absolute;left:0;">
+    <video controls="" style="width: 105%;margin-left: -15px;margin-top: -23px; display: none;"></video>
+
     <h2>Select Tools</h2>
     <input type="checkbox" id="pencil" checked>
     <label for="pencil">pencil</label><br>
@@ -173,11 +197,17 @@ input {
     <input type="checkbox" id="image" checked>
     <label for="image">image</label><br>
 
+    <input type="checkbox" id="pdf" checked>
+    <label for="pdf">pdf</label><br>
+
     <input type="checkbox" id="line" checked>
     <label for="line">line</label><br>
 
     <input type="checkbox" id="arrow" checked>
     <label for="arrow">arrow</label><br>
+
+		<input type="checkbox" id="zoom">
+    <label for="zoom">zoom</label><br>
 
     <input type="checkbox" id="dragSingle" checked>
     <label for="dragSingle">dragSingle</label><br>
@@ -195,7 +225,22 @@ input {
     <label for="quadratic">quadratic</label><br>
 
     <input type="checkbox" id="bezier" checked>
-    <label for="bezier">bezier</label><br><br>
+    <label for="bezier">bezier</label><br>
+
+    <input type="checkbox" id="undo" checked>
+    <label for="undo">undo</label><br>
+
+    <input type="checkbox" id="lineWidth" checked>
+    <label for="lineWidth">lineWidth</label><br>
+
+    <input type="checkbox" id="colorsPicker" checked>
+    <label for="colorsPicker">colorsPicker</label><br>
+
+    <input type="checkbox" id="extraOptions" checked>
+    <label for="extraOptions">extraOptions</label><br>
+
+    <input type="checkbox" id="code" checked>
+    <label for="code">code</label><br><br>
 
     <hr>
     <div>
@@ -258,9 +303,24 @@ input {
         <option>image/webp</option>
     </select>
 
+		<a id="link-to-image" target="_blank" download="image.png"></a>
+
     <br><br><br><br><br>
 
     <button id="btn-getDataURL" style="float:right;">Get DataURL</button>
+</div>
+
+<div id="comments-popup" class="white_content">
+    <button id="btn-close-comments-popup" style="float:right;">x</button>
+
+		<h2 id="h2-close-popup">Click right-side "x" button to close this popup.</h2>
+		<section class="experiment">
+        <h2 class="header" id="feedback">Feedback</h2>
+        <div>
+            <textarea id="message" style="height: 8em; margin: .2em; width: 98%; border: 1px solid rgb(189, 189, 189); outline: none; resize: vertical;" placeholder="Have any message? Suggestions or something went wrong?"></textarea>
+        </div>
+        <button id="send-message" style="font-size: 1em;">Send Message</button><small style="margin-left:1em;">Enter your email too; if you want "direct" reply!</small>
+    </section>
 </div>
 
 <div style="position: fixed; right: 0; width: 19%; padding: 1%;top:0; text-align: center;">
@@ -278,25 +338,12 @@ input {
 
     <h2><a href="multiple.html">Try multiple designers!</a></h2>
 
-    <hr>
+    <br><br><br>
 
-    <div style="text-align:center;">
-        <a href="https://www.npmjs.com/package/canvas-designer" target="_blank">
-            <img src="https://img.shields.io/npm/v/canvas-designer.svg">
-        </a>
-
-        <br>
-
-        <a href="https://www.npmjs.com/package/canvas-designer" target="_blank">
-            <img src="https://img.shields.io/npm/dm/canvas-designer.svg">
-        </a>
-
-        <br>
-
-        <a href="https://travis-ci.org/muaz-khan/Canvas-Designer">
-            <img src="https://travis-ci.org/muaz-khan/Canvas-Designer.png?branch=master">
-        </a>
-    </div>
+		<div style="text-align:cener;margin-top:15px;">
+			<p style="font-size:22px;color:red;">Ask Questions Here:</p>
+			<button id="btn-comments">Comments<br>Discussion</button>
+		</div>
 </div>
 
 <script>
@@ -304,86 +351,25 @@ document.getElementById('room-id').onkeyup = document.getElementById('room-id').
     localStorage.setItem('canvas-designer-roomid', this.value);
 };
 
-if(localStorage.getItem('canvas-designer-roomid')) {
+if (localStorage.getItem('canvas-designer-roomid')) {
     document.getElementById('room-id').value = localStorage.getItem('canvas-designer-roomid');
 }
 
 document.getElementById('open-room').onclick = function() {
     var roomid = document.getElementById('room-id').value;
-    if(!roomid.length) return alert('Please enter roomid.');
+    if (!roomid.length) return alert('Please enter roomid.');
 
     this.disabled = true;
 
-    connection.open(roomid);
+    connection.open(roomid, onOpenRoom);
 
     this.parentNode.innerHTML = '<a href="#' + roomid + '" target="_blank">Please share this link</a>';
 };
 
-var connection = new RTCMultiConnection();
-
-connection.socketURL = 'https://rtcmulticonnection.herokuapp.com:443/';
-connection.socketMessageEvent = 'canvas-designer';
-
-connection.enableFileSharing = false;
-connection.session = {
-    data: true
-};
-connection.sdpConstraints.mandatory = {
-    OfferToReceiveAudio: false,
-    OfferToReceiveVideo: false
-};
-if(location.hash.replace('#', '').length) {
-    var roomid = location.hash.replace('#', '');
-    connection.join(roomid);
-}
-
-connection.onUserStatusChanged = function(event) {
-    var infoBar = document.getElementById('hide-on-datachannel-opened');
-    if(event.status == 'online') {
-        infoBar.innerHTML = event.userid + ' is <b>online</b>.';
-    }
-
-    if(event.status == 'offline') {
-        infoBar.innerHTML = event.userid + ' is <b>offline</b>.';
-    }
-
-    numberOfConnectedUsers.innerHTML = connection.getAllParticipants().length;
-};
-
-var numberOfConnectedUsers = document.getElementById('number-of-connected-users');
-connection.onopen = function(event) {
-    var infoBar = document.getElementById('hide-on-datachannel-opened');
-    infoBar.innerHTML = '<b>' + event.userid + '</b> is ready to collaborate with you.';
-
-    if(designer.pointsLength <= 0) {
-        // make sure that remote user gets all drawings synced.
-        setTimeout(function() {
-            connection.send('plz-sync-points');
-        }, 1000);
-    }
-
-    numberOfConnectedUsers.innerHTML = connection.getAllParticipants().length;
-};
-
-connection.onclose = connection.onerror = connection.onleave = function() {
-    numberOfConnectedUsers.innerHTML = connection.getAllParticipants().length;
-};
-
-connection.onmessage = function(event) {
-    if(event.data === 'plz-sync-points') {
-        designer.sync();
-        return;
-    }
-
-    designer.syncData( event.data );
-};
-</script>
-
-<script>
 var designer = new CanvasDesigner();
 
 // you can place widget.html anywhere
-designer.widgetHTML = 'widget.html';
+designer.widgetHtmlURL = 'widget.html';
 designer.widgetJsURL = 'widget.min.js'
 
 designer.addSyncListener(function(data) {
@@ -396,6 +382,7 @@ designer.setTools({
     pencil: true,
     text: true,
     image: true,
+    pdf: true,
     eraser: true,
     line: true,
     arrow: true,
@@ -405,7 +392,13 @@ designer.setTools({
     rectangle: true,
     quadratic: true,
     bezier: true,
-    marker: true
+    marker: true,
+    zoom: false,
+    lineWidth: true,
+    colorsPicker: true,
+    extraOptions: true,
+    code: true,
+    undo: true
 });
 
 designer.appendTo(document.getElementById('widget-container'));
@@ -420,7 +413,7 @@ Array.prototype.slice.call(document.getElementById('action-controls').querySelec
 
         var tools = {};
         Array.prototype.slice.call(document.getElementById('action-controls').querySelectorAll('input[type=checkbox]')).forEach(function(checkbox2) {
-            if(checkbox2.checked) {
+            if (checkbox2.checked) {
                 tools[checkbox2.id] = true;
             }
         });
@@ -432,8 +425,8 @@ Array.prototype.slice.call(document.getElementById('action-controls').querySelec
 var undoOptions = document.getElementById('undo-options');
 
 document.getElementById('btn-display-undo-popup').onclick = function() {
-    document.getElementById('light').style.display='block';
-    document.getElementById('fade').style.display='block';
+    document.getElementById('light').style.display = 'block';
+    document.getElementById('fade').style.display = 'block';
 };
 
 var txtNumberOfShapesToUndo = document.getElementById('number-of-shapes-to-undo');
@@ -441,7 +434,7 @@ txtNumberOfShapesToUndo.onkeyup = function() {
     localStorage.setItem('number-of-shapes-to-undo', txtNumberOfShapesToUndo.value);
 }
 
-if(localStorage.getItem('number-of-shapes-to-undo')){
+if (localStorage.getItem('number-of-shapes-to-undo')) {
     txtNumberOfShapesToUndo.value = localStorage.getItem('number-of-shapes-to-undo');
     txtNumberOfShapesToUndo.onkeyup();
 }
@@ -449,10 +442,9 @@ if(localStorage.getItem('number-of-shapes-to-undo')){
 undoOptions.onchange = function() {
     txtNumberOfShapesToUndo.parentNode.style.display = 'none';
 
-    if(undoOptions.value === 'Specific Range') {
+    if (undoOptions.value === 'Specific Range') {
         //
-    }
-    else if(undoOptions.value === 'Last Multiple') {
+    } else if (undoOptions.value === 'Last Multiple') {
         txtNumberOfShapesToUndo.parentNode.style.display = 'block';
     }
 
@@ -461,27 +453,24 @@ undoOptions.onchange = function() {
 
 undoOptions.onclick = undoOptions.onchange;
 
-if(localStorage.getItem('undo-options')) {
+if (localStorage.getItem('undo-options')) {
     undoOptions.value = localStorage.getItem('undo-options');
     undoOptions.onchange();
 }
 
 document.getElementById('btn-undo').onclick = function() {
-    if(undoOptions.value === 'All Shapes') {
+    if (undoOptions.value === 'All Shapes') {
         designer.undo('all');
-    }
-    else if(undoOptions.value === 'Specific Range') {
+    } else if (undoOptions.value === 'Specific Range') {
         designer.undo({
             specificRange: {
                 start: -1,
                 end: -1
             }
         });
-    }
-    else if(undoOptions.value === 'Last Shape') {
+    } else if (undoOptions.value === 'Last Shape') {
         designer.undo(-1);
-    }
-    else if(undoOptions.value === 'Last Multiple') {
+    } else if (undoOptions.value === 'Last Multiple') {
         var numberOfLastShapes = txtNumberOfShapesToUndo.value;
         numberOfLastShapes = parseInt(numberOfLastShapes || 0) || 0;
         designer.undo({
@@ -493,47 +482,179 @@ document.getElementById('btn-undo').onclick = function() {
 };
 
 function closeUndoPopup() {
-    document.getElementById('light').style.display='none';
-    document.getElementById('fade').style.display='none';
+    document.getElementById('light').style.display = 'none';
+    document.getElementById('fade').style.display = 'none';
 
     undoOptions.onchange();
 }
 document.getElementById('btn-close-undo-popup').onclick = closeUndoPopup;
 
 function closeDataURLPopup() {
-    document.getElementById('dataURL-popup').style.display='none';
-    document.getElementById('fade').style.display='none';
+    document.getElementById('dataURL-popup').style.display = 'none';
+    document.getElementById('fade').style.display = 'none';
 
     dataURLFormat.onchange();
 }
 document.getElementById('btn-close-dataURL-popup').onclick = closeDataURLPopup;
 
 document.getElementById('export-as-image').onclick = function() {
-    document.getElementById('dataURL-popup').style.display='block';
-    document.getElementById('fade').style.display='block';
+    linkToImage.innerHTML = linkToImage.href = linkToImage.style = '';
+
+    document.getElementById('dataURL-popup').style.display = 'block';
+    document.getElementById('fade').style.display = 'block';
+
+    getDataURL();
 };
 
+function getDataURL(callback) {
+    callback = callback || function() {};
+    var format = dataURLFormat.value;
+    designer.toDataURL(format || 'image/png', function(dataURL) {
+        linkToImage.style = 'margin-left: 10px;display: block;text-align: center;margin-bottom: -50px;';
+        linkToImage.href = dataURL;
+        linkToImage.innerHTML = 'Click to Download Image';
+        linkToImage.download = 'image.' + (format || 'image/png').split('/')[1];
+
+        callback(dataURL, format);
+    });
+}
+
 var dataURLFormat = document.getElementById('data-url-format');
+var linkToImage = document.getElementById('link-to-image');
 
 dataURLFormat.onchange = function() {
     localStorage.setItem('data-url-format', dataURLFormat.value);
+    getDataURL();
 };
 dataURLFormat.onclick = dataURLFormat.onchange;
 
-if(localStorage.getItem('data-url-format')) {
+if (localStorage.getItem('data-url-format')) {
     dataURLFormat.value = localStorage.getItem('data-url-format');
     dataURLFormat.onchange();
 }
 
 document.getElementById('btn-getDataURL').onclick = function() {
-    var format = dataURLFormat.value;
-
-    designer.toDataURL(format || 'image/png', function(dataURL) {
-       window.open(dataURL)
+    getDataURL(function(dataURL, format) {
+        window.open(dataURL);
     });
 
-    closeDataURLPopup();
+    // closeDataURLPopup();
+};
+
+document.getElementById('btn-close-comments-popup').onclick = function() {
+    document.getElementById('comments-popup').style.display = 'none';
+    document.getElementById('fade').style.display = 'none';
+
+    dataURLFormat.onchange();
+};
+
+function showCommentsPopup(e) {
+    document.getElementById('comments-popup').style.display = 'block';
+    document.getElementById('fade').style.display = 'block';
+}
+document.getElementById('btn-comments').onclick = showCommentsPopup;
+if (location.hash.length && location.hash.indexOf('comment') !== -1) {
+    showCommentsPopup();
+}
+</script>
+
+<script src="https://rtcmulticonnection.herokuapp.com/dist/RTCMultiConnection.min.js"></script>
+<script src="https://rtcmulticonnection.herokuapp.com/socket.io/socket.io.js"></script>
+
+<script>
+var connection = new RTCMultiConnection();
+
+connection.socketURL = 'https://rtcmulticonnection.herokuapp.com:443/';
+connection.socketMessageEvent = 'canvas-designer';
+
+connection.enableFileSharing = false;
+connection.session = {
+    audio: true,
+    video: true,
+    data: true
+};
+connection.sdpConstraints.mandatory = {
+    OfferToReceiveAudio: true,
+    OfferToReceiveVideo: true
+};
+connection.dontCaptureUserMedia = true;
+if (location.hash.replace('#', '').length) {
+    var roomid = location.hash.replace('#', '');
+    connection.join(roomid);
+}
+
+connection.onUserStatusChanged = function(event) {
+    var infoBar = document.getElementById('hide-on-datachannel-opened');
+    if (event.status == 'online') {
+        infoBar.innerHTML = event.userid + ' is <b>online</b>.';
+    }
+
+    if (event.status == 'offline') {
+        infoBar.innerHTML = event.userid + ' is <b>offline</b>.';
+    }
+
+    numberOfConnectedUsers.innerHTML = connection.getAllParticipants().length;
+};
+
+var numberOfConnectedUsers = document.getElementById('number-of-connected-users');
+connection.onopen = function(event) {
+    var infoBar = document.getElementById('hide-on-datachannel-opened');
+    infoBar.innerHTML = '<b>' + event.userid + '</b> is ready to collaborate with you.';
+
+    if (designer.pointsLength <= 0) {
+        // make sure that remote user gets all drawings synced.
+        setTimeout(function() {
+            connection.send('plz-sync-points');
+        }, 1000);
+    }
+
+    numberOfConnectedUsers.innerHTML = connection.getAllParticipants().length;
+};
+
+connection.onclose = connection.onerror = connection.onleave = function() {
+    numberOfConnectedUsers.innerHTML = connection.getAllParticipants().length;
+};
+
+connection.onmessage = function(event) {
+    if (event.data === 'plz-sync-points') {
+        designer.sync();
+        return;
+    }
+
+    designer.syncData(event.data);
 };
 </script>
+
+<script src="dev/webrtc-handler.js"></script>
+<script>
+function onOpenRoom() {
+    // capture canvas-2d stream
+    // and share in realtime using RTCPeerConnection.addStream
+    // requires: dev/webrtc-handler.js
+    designer.captureStream(function(stream) {
+        connection.attachStreams = [stream];
+        connection.onstream({
+            stream: stream
+        });
+    });
+}
+
+var video = document.querySelector('video');
+
+connection.onstream = function(event) {
+    if (connection.isInitiator && event.mediaElement) return;
+
+    video.style.display = '';
+    video.src = URL.createObjectURL(event.stream);
+    video.play();
+};
+
+connection.onstreamended = function() {
+    video.src = null;
+    video.style.display = 'none';
+};
+</script>
+
+<script src="https://cdn.webrtc-experiment.com/common.js" async></script>
 </body>
 </html>

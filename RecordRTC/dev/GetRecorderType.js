@@ -47,9 +47,24 @@ function GetRecorderType(mediaStream, config) {
     }
 
     if (isMediaRecorderCompatible() && recorder !== CanvasRecorder && recorder !== GifRecorder && typeof MediaRecorder !== 'undefined' && 'requestData' in MediaRecorder.prototype) {
-        if (mediaStream.getVideoTracks().length) {
-            recorder = MediaStreamRecorder;
+        if ((mediaStream.getVideoTracks && mediaStream.getVideoTracks().length) || (mediaStream.getAudioTracks && mediaStream.getAudioTracks().length)) {
+            // audio-only recording
+            if (config.type === 'audio') {
+                if (typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported('audio/webm')) {
+                    recorder = MediaStreamRecorder;
+                }
+                // else recorder = StereoAudioRecorder;
+            } else {
+                // video or screen tracks
+                if (typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported('video/webm')) {
+                    recorder = MediaStreamRecorder;
+                }
+            }
         }
+    }
+
+    if (mediaStream instanceof Array && mediaStream.length) {
+        recorder = MultiStreamRecorder;
     }
 
     if (config.recorderType) {
@@ -57,7 +72,7 @@ function GetRecorderType(mediaStream, config) {
     }
 
     if (!config.disableLogs && !!recorder && !!recorder.name) {
-        console.debug('Using recorderType:', recorder.name || recorder.constructor.name);
+        console.log('Using recorderType:', recorder.name || recorder.constructor.name);
     }
 
     return recorder;

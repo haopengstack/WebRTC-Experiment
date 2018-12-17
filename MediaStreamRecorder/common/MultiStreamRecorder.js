@@ -1,125 +1,164 @@
 // ______________________
 // MultiStreamRecorder.js
 
-function MultiStreamRecorder(mediaStream) {
-    if (!mediaStream) {
-        throw 'MediaStream is mandatory.';
+function MultiStreamRecorder(arrayOfMediaStreams, options) {
+    arrayOfMediaStreams = arrayOfMediaStreams || [];
+
+    if (arrayOfMediaStreams instanceof MediaStream) {
+        arrayOfMediaStreams = [arrayOfMediaStreams];
     }
 
     var self = this;
-    var isMediaRecorder = isMediaRecorderCompatible();
 
-    this.stream = mediaStream;
+    var mixer;
+    var mediaRecorder;
 
-    // void start(optional long timeSlice)
-    // timestamp to fire "ondataavailable"
+    options = options || {
+        mimeType: 'video/webm',
+        video: {
+            width: 360,
+            height: 240
+        }
+    };
+
+    if (!options.frameInterval) {
+        options.frameInterval = 10;
+    }
+
+    if (!options.video) {
+        options.video = {};
+    }
+
+    if (!options.video.width) {
+        options.video.width = 360;
+    }
+
+    if (!options.video.height) {
+        options.video.height = 240;
+    }
+
     this.start = function(timeSlice) {
-        audioRecorder = new MediaStreamRecorder(mediaStream);
-        videoRecorder = new MediaStreamRecorder(mediaStream);
+        // github/muaz-khan/MultiStreamsMixer
+        mixer = new MultiStreamsMixer(arrayOfMediaStreams);
 
-        audioRecorder.mimeType = 'audio/ogg';
-        videoRecorder.mimeType = 'video/webm';
+        if (getVideoTracks().length) {
+            mixer.frameInterval = options.frameInterval || 10;
+            mixer.width = options.video.width || 360;
+            mixer.height = options.video.height || 240;
+            mixer.startDrawingFrames();
+        }
 
-        for (var prop in this) {
-            if (typeof this[prop] !== 'function') {
-                audioRecorder[prop] = videoRecorder[prop] = this[prop];
+        if (typeof self.previewStream === 'function') {
+            self.previewStream(mixer.getMixedStream());
+        }
+
+        // record using MediaRecorder API
+        mediaRecorder = new MediaStreamRecorder(mixer.getMixedStream());
+
+        for (var prop in self) {
+            if (typeof self[prop] !== 'function') {
+                mediaRecorder[prop] = self[prop];
             }
         }
 
-        audioRecorder.ondataavailable = function(blob) {
-            if (!audioVideoBlobs[recordingInterval]) {
-                audioVideoBlobs[recordingInterval] = {};
-            }
-
-            audioVideoBlobs[recordingInterval].audio = blob;
-
-            if (audioVideoBlobs[recordingInterval].video && !audioVideoBlobs[recordingInterval].onDataAvailableEventFired) {
-                audioVideoBlobs[recordingInterval].onDataAvailableEventFired = true;
-                fireOnDataAvailableEvent(audioVideoBlobs[recordingInterval]);
-            }
+        mediaRecorder.ondataavailable = function(blob) {
+            self.ondataavailable(blob);
         };
 
-        videoRecorder.ondataavailable = function(blob) {
-            if (isMediaRecorder) {
-                return self.ondataavailable({
-                    video: blob,
-                    audio: blob
-                });
-            }
+        mediaRecorder.onstop = self.onstop;
 
-            if (!audioVideoBlobs[recordingInterval]) {
-                audioVideoBlobs[recordingInterval] = {};
-            }
-
-            audioVideoBlobs[recordingInterval].video = blob;
-
-            if (audioVideoBlobs[recordingInterval].audio && !audioVideoBlobs[recordingInterval].onDataAvailableEventFired) {
-                audioVideoBlobs[recordingInterval].onDataAvailableEventFired = true;
-                fireOnDataAvailableEvent(audioVideoBlobs[recordingInterval]);
-            }
-        };
-
-        function fireOnDataAvailableEvent(blobs) {
-            recordingInterval++;
-            self.ondataavailable(blobs);
-        }
-
-        videoRecorder.onstop = audioRecorder.onstop = function(error) {
-            self.onstop(error);
-        };
-
-        if (!isMediaRecorder) {
-            // to make sure both audio/video are synced.
-            videoRecorder.onStartedDrawingNonBlankFrames = function() {
-                videoRecorder.clearOldRecordedFrames();
-                audioRecorder.start(timeSlice);
-            };
-            videoRecorder.start(timeSlice);
-        } else {
-            videoRecorder.start(timeSlice);
-        }
+        mediaRecorder.start(timeSlice);
     };
 
-    this.stop = function() {
-        if (audioRecorder) {
-            audioRecorder.stop();
-        }
-        if (videoRecorder) {
-            videoRecorder.stop();
-        }
-    };
+    function getVideoTracks() {
+        var tracks = [];
+        arrayOfMediaStreams.forEach(function(stream) {
+            stream.getVideoTracks().forEach(function(track) {
+                tracks.push(track);
+            });
+        });
+        return tracks;
+    }
 
-    this.ondataavailable = function(blob) {
-        console.log('ondataavailable..', blob);
-    };
+    this.stop = function(callback) {
+        if (!mediaRecorder) {
+            return;
+        }
 
-    this.onstop = function(error) {
-        console.warn('stopped..', error);
+        mediaRecorder.stop(function(blob) {
+            callback(blob);
+        });
     };
 
     this.pause = function() {
-        if (audioRecorder) {
-            audioRecorder.pause();
-        }
-        if (videoRecorder) {
-            videoRecorder.pause();
+        if (mediaRecorder) {
+            mediaRecorder.pause();
         }
     };
 
     this.resume = function() {
-        if (audioRecorder) {
-            audioRecorder.resume();
-        }
-        if (videoRecorder) {
-            videoRecorder.resume();
+        if (mediaRecorder) {
+            mediaRecorder.resume();
         }
     };
 
-    var audioRecorder;
-    var videoRecorder;
+    this.clearRecordedData = function() {
+        if (mediaRecorder) {
+            mediaRecorder.clearRecordedData();
+            mediaRecorder = null;
+        }
 
-    var audioVideoBlobs = {};
-    var recordingInterval = 0;
+        if (mixer) {
+            mixer.releaseStreams();
+            mixer = null;
+        }
+    };
+
+    this.addStreams = this.addStream = function(streams) {
+        if (!streams) {
+            throw 'First parameter is required.';
+        }
+
+        if (!(streams instanceof Array)) {
+            streams = [streams];
+        }
+
+        arrayOfMediaStreams.concat(streams);
+
+        if (!mediaRecorder || !mixer) {
+            return;
+        }
+
+        mixer.appendStreams(streams);
+    };
+
+    this.resetVideoStreams = function(streams) {
+        if (!mixer) {
+            return;
+        }
+
+        if (streams && !(streams instanceof Array)) {
+            streams = [streams];
+        }
+
+        mixer.resetVideoStreams(streams);
+    };
+
+    this.ondataavailable = function(blob) {
+        if (self.disableLogs) {
+            return;
+        }
+
+        console.log('ondataavailable', blob);
+    };
+
+    this.onstop = function() {};
+
+    // for debugging
+    this.name = 'MultiStreamRecorder';
+    this.toString = function() {
+        return this.name;
+    };
 }
 
 if (typeof MediaStreamRecorder !== 'undefined') {

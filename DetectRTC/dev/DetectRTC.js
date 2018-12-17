@@ -11,7 +11,11 @@ detectPrivateMode(function(isPrivateBrowsing) {
 // DetectRTC.isChrome || DetectRTC.isFirefox || DetectRTC.isEdge
 DetectRTC.browser['is' + DetectRTC.browser.name] = true;
 
-var isNodeWebkit = !!(window.process && (typeof window.process === 'object') && window.process.versions && window.process.versions['node-webkit']);
+// -----------
+DetectRTC.osName = osName;
+DetectRTC.osVersion = osVersion;
+
+var isNodeWebkit = typeof process === 'object' && typeof process.versions === 'object' && process.versions['node-webkit'];
 
 // --------- Detect if system supports WebRTC 1.0 or WebRTC 1.1.
 var isWebRTCSupported = false;
@@ -35,10 +39,19 @@ if (DetectRTC.browser.isChrome && DetectRTC.browser.version >= 35) {
     isScreenCapturingSupported = true;
 } else if (DetectRTC.browser.isFirefox && DetectRTC.browser.version >= 34) {
     isScreenCapturingSupported = true;
+} else if (DetectRTC.browser.isEdge && DetectRTC.browser.version >= 17) {
+    isScreenCapturingSupported = true; // navigator.getDisplayMedia
+} else if (DetectRTC.osName === 'Android' && DetectRTC.browser.isChrome) {
+    isScreenCapturingSupported = true;
 }
 
-if (location.protocol !== 'https:') {
-    isScreenCapturingSupported = false;
+if (!/^(https:|chrome-extension:)$/g.test(location.protocol || '')) {
+    var isNonLocalHost = typeof document !== 'undefined' && typeof document.domain === 'string' && document.domain.search && document.domain.search(/localhost|127.0./g) === -1;
+    if (isNonLocalHost && (DetectRTC.browser.isChrome || DetectRTC.browser.isEdge || DetectRTC.browser.isOpera)) {
+        isScreenCapturingSupported = false;
+    } else if (DetectRTC.browser.isFirefox) {
+        isScreenCapturingSupported = false;
+    }
 }
 DetectRTC.isScreenCapturingSupported = isScreenCapturingSupported;
 
@@ -56,7 +69,7 @@ var webAudio = {
     if (item in window) {
         webAudio.isSupported = true;
 
-        if ('createMediaStreamSource' in window[item].prototype) {
+        if (window[item] && 'createMediaStreamSource' in window[item].prototype) {
             webAudio.isCreateMediaStreamSourceSupported = true;
         }
     }
@@ -93,14 +106,17 @@ if (navigator.getUserMedia) {
 } else if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
     isGetUserMediaSupported = true;
 }
-if (DetectRTC.browser.isChrome && DetectRTC.browser.version >= 46 && location.protocol !== 'https:') {
-    DetectRTC.isGetUserMediaSupported = 'Requires HTTPs';
+
+if (DetectRTC.browser.isChrome && DetectRTC.browser.version >= 46 && !/^(https:|chrome-extension:)$/g.test(location.protocol || '')) {
+    if (typeof document !== 'undefined' && typeof document.domain === 'string' && document.domain.search && document.domain.search(/localhost|127.0./g) === -1) {
+        isGetUserMediaSupported = 'Requires HTTPs';
+    }
+}
+
+if (DetectRTC.osName === 'Nodejs') {
+    isGetUserMediaSupported = false;
 }
 DetectRTC.isGetUserMediaSupported = isGetUserMediaSupported;
-
-// -----------
-DetectRTC.osName = osName;
-DetectRTC.osVersion = osVersion;
 
 var displayResolution = '';
 if (screen.width) {
@@ -110,9 +126,29 @@ if (screen.width) {
 }
 DetectRTC.displayResolution = displayResolution;
 
+function getAspectRatio(w, h) {
+    function gcd(a, b) {
+        return (b == 0) ? a : gcd(b, a % b);
+    }
+    var r = gcd(w, h);
+    return (w / r) / (h / r);
+}
+
+DetectRTC.displayAspectRatio = getAspectRatio(screen.width, screen.height).toFixed(2);
+
 // ----------
 DetectRTC.isCanvasSupportsStreamCapturing = isCanvasSupportsStreamCapturing;
 DetectRTC.isVideoSupportsStreamCapturing = isVideoSupportsStreamCapturing;
+
+if (DetectRTC.browser.name == 'Chrome' && DetectRTC.browser.version >= 53) {
+    if (!DetectRTC.isCanvasSupportsStreamCapturing) {
+        DetectRTC.isCanvasSupportsStreamCapturing = 'Requires chrome flag: enable-experimental-web-platform-features';
+    }
+
+    if (!DetectRTC.isVideoSupportsStreamCapturing) {
+        DetectRTC.isVideoSupportsStreamCapturing = 'Requires chrome flag: enable-experimental-web-platform-features';
+    }
+}
 
 // ------
 DetectRTC.DetectLocalIPAddress = DetectLocalIPAddress;
@@ -120,12 +156,23 @@ DetectRTC.DetectLocalIPAddress = DetectLocalIPAddress;
 DetectRTC.isWebSocketsSupported = 'WebSocket' in window && 2 === window.WebSocket.CLOSING;
 DetectRTC.isWebSocketsBlocked = !DetectRTC.isWebSocketsSupported;
 
+if (DetectRTC.osName === 'Nodejs') {
+    DetectRTC.isWebSocketsSupported = true;
+    DetectRTC.isWebSocketsBlocked = false;
+}
+
 DetectRTC.checkWebSocketsSupport = function(callback) {
     callback = callback || function() {};
     try {
+        var starttime;
         var websocket = new WebSocket('wss://echo.websocket.org:443/');
         websocket.onopen = function() {
             DetectRTC.isWebSocketsBlocked = false;
+            starttime = (new Date).getTime();
+            websocket.send('ping');
+        };
+        websocket.onmessage = function() {
+            DetectRTC.WebsocketLatency = (new Date).getTime() - starttime + 'ms';
             callback();
             websocket.close();
             websocket = null;
@@ -146,7 +193,17 @@ DetectRTC.load = function(callback) {
     checkDeviceSupport(callback);
 };
 
-DetectRTC.MediaDevices = MediaDevices;
+// check for microphone/camera support!
+if (typeof checkDeviceSupport === 'function') {
+    // checkDeviceSupport();
+}
+
+if (typeof MediaDevices !== 'undefined') {
+    DetectRTC.MediaDevices = MediaDevices;
+} else {
+    DetectRTC.MediaDevices = [];
+}
+
 DetectRTC.hasMicrophone = hasMicrophone;
 DetectRTC.hasSpeakers = hasSpeakers;
 DetectRTC.hasWebcam = hasWebcam;
@@ -160,7 +217,7 @@ DetectRTC.videoInputDevices = videoInputDevices;
 
 // ------
 var isSetSinkIdSupported = false;
-if ('setSinkId' in document.createElement('video')) {
+if (typeof document !== 'undefined' && typeof document.createElement === 'function' && 'setSinkId' in document.createElement('video')) {
     isSetSinkIdSupported = true;
 }
 DetectRTC.isSetSinkIdSupported = isSetSinkIdSupported;
@@ -206,3 +263,6 @@ if (DetectRTC.browser.isFirefox && DetectRTC.browser.version >= 43) {
 DetectRTC.isMultiMonitorScreenCapturingSupported = isMultiMonitorScreenCapturingSupported;
 
 DetectRTC.isPromisesSupported = !!('Promise' in window);
+
+// version is generated by "grunt"
+DetectRTC.version = '@@version';

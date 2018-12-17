@@ -1,41 +1,66 @@
-﻿<link href='https://fonts.googleapis.com/css?family=Cutive+Mono' rel='stylesheet' type='text/css'>
-
-<style>
+﻿<style>
 * {
-    font-family: 'Cutive Mono'!important;
-    font-size: 20px;
-    -webkit-user-select:none;
-    -webkit-user-drag:none;
+  -webkit-user-select: none;
+  -user-select: none;
+  -webkit-user-drag: none;
+  -user-drag: none;
+}
+
+@font-face {
+  font-family: 'Custom_Font';
+  src: local('.SFNSText-Light'), 
+       local('.HelveticaNeueDeskInterface-Light'), 
+       local('.LucidaGrandeUI'), 
+       local('Ubuntu Light'), 
+       local('Segoe UI Light'),
+       local('Roboto-Light'), 
+       local('DroidSans'), 
+       local('Tahoma');
 }
 
 input {
     -webkit-user-select:initial;
 }
 
-body { 
-    padding: 10px;
-    min-width: 520px;
+* {
+  margin: 0;
+  padding: 0;
 }
 
-hr {
-    border:0;
-    border-bottom: solid lightgray 1px;
-    margin: 0 -18px;
+html, body {
+  background-color: white;
+  font-family: Custom_Font!important;
+  font-size: 1em;
+  overflow: hidden;
 }
 
 label, input {
     vertical-align: middle;
 }
 
-label, input[type=checkbox] {
+label, input[type=checkbox], input[type=radio] {
     cursor: pointer;
+}
+
+label {
+    margin-right: 15px;
+    border: 1px dotted black;
+    padding: 3px 5px;
+    border-radius: 3px;
+}
+
+input[type=radio] {
+    vertical-align: baseline;
+    margin-right: 8px;
 }
 
 select {
     border: 1px solid black;
     padding: 0;
     outline:none!important;
-    border: 1px solid black !important;
+    border: 1px dotted black;
+    padding: 3px 5px;
+    border-radius: 3px;
 }
 
 option {
@@ -51,98 +76,163 @@ option:last-child {
     border-bottom: 0;
 }
 
-input[disabled], label[disabled] {
+input[disabled], label[disabled], button[disabled] {
     cursor: not-allowed!important;
     color: #bfbfbf!important;
 }
 
-.help-img {
-    vertical-align: middle;
-    width: 24px;
-    height: 24px;
-    cursor: pointer;
+#applying-changes {
+    background: yellow;
+    position: fixed;
+    top: 0;
+    left: 0px;
+    right: 0px;
+    width: 100%;
+    text-align: center;
+    color: green;
+    font-weight: bold;
+    display: none;
+    font-size: 24px !important;
+    padding: 0;
+    border-bottom: 1px solid;
+}
+
+label:hover {
+    background: yellow;
+}
+
+td {
+    padding: 10px 20px;
+}
+
+article {
+    width: 800px;
+    margin: 0 auto;
+    border: 1px solid black;
+    border-top: 0;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
+h1 {
+    text-align: center;
+    padding: 20px 0;
+    font-weight: normal;
+    font-size: 250%;
 }
 </style>
 
-<h1 id="applying-changes" style="position:absolute;right:10px;top:-10px;color:green;font-weight:normal;font-size:14px!important;display:none;">Applying Changes...</h1>
+<title>RecordRTC Extension</title>
 
-<input type="checkbox" id="enableMicrophone"> <label for="enableMicrophone">Include Microphone?</label>
-<br>
-<small style="font-size:13px;margin-left:32px;display:block;">
-    Record Microphone + (full screen or tab or any app's screen).
-</small>
+<p id="applying-changes">Applying Changes...</p>
 
-<br>
-<hr>
-<br>
+<article>
+<h1>Customize RecordRTC Extension</h1>
 
-<div>
-    <input type="checkbox" id="enableTabAudio"> <label for="enableTabAudio">Record all audios on a tab?</label>
-    <br>
-    <small style="font-size:13px;margin-left:32px;display:block;">
-        Record all-audios on a tab. Record entire conference!
-    </small>
-</div>
+<table>
+    <tr>
+        <td>
+            Select a camera device:
+        </td>
 
+        <td>
+            <select id="camera-devices"></select>
+        </td>
+    </tr>
 
-<br>
-<hr>
+    <tr>
+        <td>
+            Select a microphone device:
+        </td>
 
-<h2>Select Resolutions:</h2>
-<select id="resolutions" size=5>
-    <option>Default (29999x8640)</option>
-    <option>4K UHD (3840x2160)</option>
-    <option>WQXGA (2560x1600)</option>
-    <option>WQHD (2560x1440)</option>
-    <option>WUXGA (1920x1200)</option>
-    <option>Full HD (1920x1080)</option>
-    <option>WSXGA+ (1680x1050)</option>
-    <option>UXGA (1600x1200)</option>
-    <option>HD+ (1600x900)</option>
-    <option>WXGA+ (1440x900)</option>
-    <option>HD (1366x768)</option>
-    <option>HD (1360x768)</option>
-    <option>SXGA (1280x1024)</option>
-    <option>WXGA (1280x800)</option>
-    <option>WXGA (1280x768)</option>
-    <option>WXGA (1280x720)</option>
-    <option>XGA+ (1152x864)</option>
-    <option>XGA (1024x768)</option>
-    <option>WSVGA (1024x600)</option>
-    <option>SVGA (800x600)</option>
-    <option>720p (1280x720)</option>
-    <option>360p (640x360)</option>
-</select>
+        <td>
+            <select id="microphone-devices"></select>
+        </td>
+    </tr>
 
+    <tr>
+        <td>
+            Select video codecs:
+        </td>
 
-<br><br>
-<hr>
+        <td>
+            <div id="videoCodec" style="display: inline-block;">
+                <label><input type="radio" checked>Default</label>
+                <label><input type="radio">VP8</label>
+                <label><input type="radio">VP9</label>
+                <label><input type="radio">H264</label>
+                <label><input type="radio">MKV</label>
+            </div>
+        </td>
+    </tr>
 
-<h2>Select Video Codecs:</h2>
-<select id="videoCodec" size=3>
-    <option>Default</option>
-    <option>VP8</option>
-    <option>VP9</option>
-</select>
+    <tr>
+        <td>
+            Camera resolutions:
+        </td>
 
-<br><br>
+        <td>
+            <select id="videoResolutions">
+                <option value="1920x1080" selected>1920p</option>
+                <option value="1280x720">720p</option>
+                <option value="640x480">480p</option>
+                <option value="640x360">360p</option>
+                <option value="320x240">240p</option>
+                <option value="default">Default</option>
+            </select>
+        </td>
+    </tr>
 
-<hr>
-<br>
+    <tr>
+        <td>
+            Select video frame rates:
+        </td>
 
-<label for="videoMaxFrameRates">Video Framerates</label>
-<input type="text" id="videoMaxFrameRates" value="" style="margin-bottom:5px;width:70px;"> fps
+        <td>
+            <select id="videoMaxFrameRates">
+                <option selected>None</option>
+                <option>30</option>
+                <option>25</option>
+                <option>15</option>
+            </select>
+        </td>
+    </tr>
 
-<hr>
-<br>
+    <tr>
+        <td>
+            Select video bitrates:
+        </td>
 
-<label for="videoBitsPerSecond">Video Bitrates</label>
-<input type="text" id="videoBitsPerSecond" value="" style="margin-bottom:5px;width:70px;"> kbps
+        <td>
+            <select id="bitsPerSecond">
+                <option value="default" selected>Default bitrates</option>
+                <option value="8000000000">1 GB per second</option>
+                <option value="800000000">100 MB per second</option>
+                <option value="8000000">1 MB per second</option>
+                <option value="800000">100 KB per second</option>
+                <option value="8000">1 KB per second</option>
+                <option value="800">100 Bytes per second</option>
+            </select>
+        </td>
+    </tr>
 
-<br>
+    <tr>
+        <td>
+            YouTube visibility:
+        </td>
 
-<label for="audioBitsPerSecond">Audio Bitrates</label>
-<input type="text" id="audioBitsPerSecond" value="" style="width:70px;"> kbps
+        <td>
+            <select id="youtube_privacy">
+                <option value="public" selected>Public</option>
+                <option value="unlisted">Unlisted</option>
+                <option value="private">Private</option>
+                <option value="scheduled" disabled>Scheduled</option>
+            </select>
+        </td>
+    </tr>
+</table>
 
+</article>
 
+<script src="RecordRTC/getAllAudioVideoDevices.js"></script>
 <script src="options.js"></script>

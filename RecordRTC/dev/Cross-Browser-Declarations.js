@@ -9,11 +9,26 @@ if (typeof requestAnimationFrame === 'undefined') {
     if (typeof webkitRequestAnimationFrame !== 'undefined') {
         /*global requestAnimationFrame:true */
         requestAnimationFrame = webkitRequestAnimationFrame;
-    }
-
-    if (typeof mozRequestAnimationFrame !== 'undefined') {
+    } else if (typeof mozRequestAnimationFrame !== 'undefined') {
         /*global requestAnimationFrame:true */
         requestAnimationFrame = mozRequestAnimationFrame;
+    } else if (typeof msRequestAnimationFrame !== 'undefined') {
+        /*global requestAnimationFrame:true */
+        requestAnimationFrame = msRequestAnimationFrame;
+    } else if (typeof requestAnimationFrame === 'undefined') {
+        // via: https://gist.github.com/paulirish/1579671
+        var lastTime = 0;
+
+        /*global requestAnimationFrame:true */
+        requestAnimationFrame = function(callback, element) {
+            var currTime = new Date().getTime();
+            var timeToCall = Math.max(0, 16 - (currTime - lastTime));
+            var id = setTimeout(function() {
+                callback(currTime + timeToCall);
+            }, timeToCall);
+            lastTime = currTime + timeToCall;
+            return id;
+        };
     }
 }
 
@@ -23,11 +38,17 @@ if (typeof cancelAnimationFrame === 'undefined') {
     if (typeof webkitCancelAnimationFrame !== 'undefined') {
         /*global cancelAnimationFrame:true */
         cancelAnimationFrame = webkitCancelAnimationFrame;
-    }
-
-    if (typeof mozCancelAnimationFrame !== 'undefined') {
+    } else if (typeof mozCancelAnimationFrame !== 'undefined') {
         /*global cancelAnimationFrame:true */
         cancelAnimationFrame = mozCancelAnimationFrame;
+    } else if (typeof msCancelAnimationFrame !== 'undefined') {
+        /*global cancelAnimationFrame:true */
+        cancelAnimationFrame = msCancelAnimationFrame;
+    } else if (typeof cancelAnimationFrame === 'undefined') {
+        /*global cancelAnimationFrame:true */
+        cancelAnimationFrame = function(id) {
+            clearTimeout(id);
+        };
     }
 }
 
@@ -66,7 +87,8 @@ if (typeof navigator !== 'undefined' && typeof navigator.getUserMedia === 'undef
 
 var isEdge = navigator.userAgent.indexOf('Edge') !== -1 && (!!navigator.msSaveBlob || !!navigator.msSaveOrOpenBlob);
 var isOpera = !!window.opera || navigator.userAgent.indexOf('OPR/') !== -1;
-var isChrome = !isOpera && !isEdge && !!navigator.webkitGetUserMedia;
+var isSafari = navigator.userAgent.toLowerCase().indexOf('safari/') !== -1 && navigator.userAgent.toLowerCase().indexOf('chrome/') === -1;
+var isChrome = (!isOpera && !isEdge && !!navigator.webkitGetUserMedia) || isElectron() || navigator.userAgent.toLowerCase().indexOf('chrome/') !== -1;
 
 var MediaStream = window.MediaStream;
 
@@ -83,7 +105,7 @@ if (typeof MediaStream !== 'undefined') {
             }
 
             var tracks = [];
-            this.getTracks.forEach(function(track) {
+            this.getTracks().forEach(function(track) {
                 if (track.kind.toString().indexOf('video') !== -1) {
                     tracks.push(track);
                 }
@@ -97,7 +119,7 @@ if (typeof MediaStream !== 'undefined') {
             }
 
             var tracks = [];
-            this.getTracks.forEach(function(track) {
+            this.getTracks().forEach(function(track) {
                 if (track.kind.toString().indexOf('audio') !== -1) {
                     tracks.push(track);
                 }
@@ -106,18 +128,11 @@ if (typeof MediaStream !== 'undefined') {
         };
     }
 
-    if (!('stop' in MediaStream.prototype)) {
+    // override "stop" method for all browsers
+    if (typeof MediaStream.prototype.stop === 'undefined') {
         MediaStream.prototype.stop = function() {
-            this.getAudioTracks().forEach(function(track) {
-                if (!!track.stop) {
-                    track.stop();
-                }
-            });
-
-            this.getVideoTracks().forEach(function(track) {
-                if (!!track.stop) {
-                    track.stop();
-                }
+            this.getTracks().forEach(function(track) {
+                track.stop();
             });
         };
     }
@@ -177,25 +192,60 @@ function invokeSaveAsDialog(file, fileName) {
 
     var hyperlink = document.createElement('a');
     hyperlink.href = URL.createObjectURL(file);
-    hyperlink.target = '_blank';
     hyperlink.download = fileFullName;
 
-    if (!!navigator.mozGetUserMedia) {
-        hyperlink.onclick = function() {
-            (document.body || document.documentElement).removeChild(hyperlink);
-        };
-        (document.body || document.documentElement).appendChild(hyperlink);
+    hyperlink.style = 'display:none;opacity:0;color:transparent;';
+    (document.body || document.documentElement).appendChild(hyperlink);
+
+    if (typeof hyperlink.click === 'function') {
+        hyperlink.click();
+    } else {
+        hyperlink.target = '_blank';
+        hyperlink.dispatchEvent(new MouseEvent('click', {
+            view: window,
+            bubbles: true,
+            cancelable: true
+        }));
     }
 
-    var evt = new MouseEvent('click', {
-        view: window,
-        bubbles: true,
-        cancelable: true
-    });
+    URL.revokeObjectURL(hyperlink.href);
+}
 
-    hyperlink.dispatchEvent(evt);
+/**
+ * from: https://github.com/cheton/is-electron/blob/master/index.js
+ **/
+function isElectron() {
+    // Renderer process
+    if (typeof window !== 'undefined' && typeof window.process === 'object' && window.process.type === 'renderer') {
+        return true;
+    }
 
-    if (!navigator.mozGetUserMedia) {
-        URL.revokeObjectURL(hyperlink.href);
+    // Main process
+    if (typeof process !== 'undefined' && typeof process.versions === 'object' && !!process.versions.electron) {
+        return true;
+    }
+
+    // Detect the user agent when the `nodeIntegration` option is set to true
+    if (typeof navigator === 'object' && typeof navigator.userAgent === 'string' && navigator.userAgent.indexOf('Electron') >= 0) {
+        return true;
+    }
+
+    return false;
+}
+
+function setSrcObject(stream, element, ignoreCreateObjectURL) {
+    if ('srcObject' in element) {
+        element.srcObject = stream;
+    } else if ('mozSrcObject' in element) {
+        element.mozSrcObject = stream;
+    } else if ('createObjectURL' in URL && !ignoreCreateObjectURL) {
+        try {
+            element.src = URL.createObjectURL(stream);
+        } catch (e) {
+            setSrcObject(stream, element, true);
+            return;
+        }
+    } else {
+        alert('createObjectURL/srcObject both are not supported.');
     }
 }

@@ -2,8 +2,16 @@ function SocketConnection(connection, connectCallback) {
     var parameters = '';
 
     parameters += '?userid=' + connection.userid;
+    parameters += '&sessionid=' + connection.sessionid;
     parameters += '&msgEvent=' + connection.socketMessageEvent;
     parameters += '&socketCustomEvent=' + connection.socketCustomEvent;
+    parameters += '&autoCloseEntireSession=' + !!connection.autoCloseEntireSession;
+
+    if (connection.session.broadcast === true) {
+        parameters += '&oneToMany=true';
+    }
+
+    parameters += '&maxParticipantsAllowed=' + connection.maxParticipantsAllowed;
 
     if (connection.enableScalableBroadcast) {
         parameters += '&enableScalableBroadcast=true';
@@ -18,11 +26,31 @@ function SocketConnection(connection, connectCallback) {
         io.sockets = {};
     } catch (e) {};
 
-    try {
-        connection.socket = io((connection.socketURL || '/') + parameters);
-    } catch (e) {
-        connection.socket = io.connect((connection.socketURL || '/') + parameters, connection.socketOptions);
+    if (!connection.socketURL) {
+        connection.socketURL = '/';
     }
+
+    if (connection.socketURL.substr(connection.socketURL.length - 1, 1) != '/') {
+        // connection.socketURL = 'https://domain.com:9001/';
+        throw '"socketURL" MUST end with a slash.';
+    }
+
+    if (connection.enableLogs) {
+        if (connection.socketURL == '/') {
+            console.info('socket.io is connected at: ', location.origin + '/');
+        } else {
+            console.info('socket.io is connected at: ', connection.socketURL);
+        }
+    }
+
+    try {
+        connection.socket = io(connection.socketURL + parameters);
+    } catch (e) {
+        connection.socket = io.connect(connection.socketURL + parameters, connection.socketOptions);
+    }
+
+    // detect signaling medium
+    connection.socket.isIO = true;
 
     var mPeer = connection.multiPeersHandler;
 
@@ -34,9 +62,22 @@ function SocketConnection(connection, connectCallback) {
             userid: remoteUserId,
             extra: extra
         });
+
+        updateExtraBackup(remoteUserId, extra);
     });
 
-    connection.socket.on(connection.socketMessageEvent, function(message) {
+    function updateExtraBackup(remoteUserId, extra) {
+        if (!connection.peersBackup[remoteUserId]) {
+            connection.peersBackup[remoteUserId] = {
+                userid: remoteUserId,
+                extra: {}
+            };
+        }
+
+        connection.peersBackup[remoteUserId].extra = extra;
+    }
+
+    function onMessageEvent(message) {
         if (message.remoteUserId != connection.userid) return;
 
         if (connection.peers[message.sender] && connection.peers[message.sender].extra != message.message.extra) {
@@ -45,6 +86,8 @@ function SocketConnection(connection, connectCallback) {
                 userid: message.sender,
                 extra: message.extra
             });
+
+            updateExtraBackup(message.sender, message.extra);
         }
 
         if (message.message.streamSyncNeeded && connection.peers[message.sender]) {
@@ -56,6 +99,9 @@ function SocketConnection(connection, connectCallback) {
             var action = message.message.action;
 
             if (action === 'ended' || action === 'inactive' || action === 'stream-removed') {
+                if (connection.peersBackup[stream.userid]) {
+                    stream.extra = connection.peersBackup[stream.userid].extra;
+                }
                 connection.onstreamended(stream);
                 return;
             }
@@ -64,25 +110,6 @@ function SocketConnection(connection, connectCallback) {
 
             if (typeof stream.stream[action] == 'function') {
                 stream.stream[action](type);
-            }
-            return;
-        }
-
-        if (message.message === 'connectWithAllParticipants') {
-            if (connection.broadcasters.indexOf(message.sender) === -1) {
-                connection.broadcasters.push(message.sender);
-            }
-
-            mPeer.onNegotiationNeeded({
-                allParticipants: connection.getAllParticipants(message.sender)
-            }, message.sender);
-            return;
-        }
-
-        if (message.message === 'removeFromBroadcastersList') {
-            if (connection.broadcasters.indexOf(message.sender) !== -1) {
-                delete connection.broadcasters[connection.broadcasters.indexOf(message.sender)];
-                connection.broadcasters = removeNullEntries(connection.broadcasters);
             }
             return;
         }
@@ -133,8 +160,19 @@ function SocketConnection(connection, connectCallback) {
             return;
         }
 
-        if (message.message.readyForOffer || message.message.addMeAsBroadcaster) {
-            connection.addNewBroadcaster(message.sender);
+        if (message.message.readyForOffer) {
+            if (connection.attachStreams.length) {
+                connection.waitingForLocalMedia = false;
+            }
+
+            if (connection.waitingForLocalMedia) {
+                // if someone is waiting to join you
+                // make sure that we've local media before making a handshake
+                setTimeout(function() {
+                    onMessageEvent(message);
+                }, 1);
+                return;
+            }
         }
 
         if (message.message.newParticipationRequest && message.sender !== connection.userid) {
@@ -157,24 +195,10 @@ function SocketConnection(connection, connectCallback) {
                 dontGetRemoteStream: typeof message.message.isOneWay !== 'undefined' ? message.message.isOneWay : !!connection.session.oneway || connection.direction === 'one-way',
                 dontAttachLocalStream: !!message.message.dontGetRemoteStream,
                 connectionDescription: message,
-                successCallback: function() {
-                    // if its oneway----- todo: THIS SEEMS NOT IMPORTANT.
-                    if (typeof message.message.isOneWay !== 'undefined' ? message.message.isOneWay : !!connection.session.oneway || connection.direction === 'one-way') {
-                        connection.addNewBroadcaster(message.sender, userPreferences);
-                    }
-
-                    if (!!connection.session.oneway || connection.direction === 'one-way' || isData(connection.session)) {
-                        connection.addNewBroadcaster(message.sender, userPreferences);
-                    }
-                }
+                successCallback: function() {}
             };
 
             connection.onNewParticipant(message.sender, userPreferences);
-            return;
-        }
-
-        if (message.message.shiftedModerationControl) {
-            connection.onShiftedModerationControl(message.sender, message.message.broadcasters);
             return;
         }
 
@@ -196,22 +220,9 @@ function SocketConnection(connection, connectCallback) {
         }
 
         mPeer.addNegotiatedMessage(message.message, message.sender);
-    });
+    }
 
-    connection.socket.on('user-left', function(userid) {
-        onUserLeft(userid);
-
-        connection.onUserStatusChanged({
-            userid: userid,
-            status: 'offline',
-            extra: connection.peers[userid] ? connection.peers[userid].extra || {} : {}
-        });
-
-        connection.onleave({
-            userid: userid,
-            extra: {}
-        });
-    });
+    connection.socket.on(connection.socketMessageEvent, onMessageEvent);
 
     var alreadyConnected = false;
 
@@ -305,5 +316,14 @@ function SocketConnection(connection, connectCallback) {
 
     connection.socket.on('number-of-broadcast-viewers-updated', function(data) {
         connection.onNumberOfBroadcastViewersUpdated(data);
+    });
+
+    connection.socket.on('room-full', function(roomid) {
+        connection.onRoomFull(roomid);
+    });
+
+    connection.socket.on('become-next-modrator', function(sessionid) {
+        if (sessionid != connection.sessionid) return;
+        connection.isInitiator = true;
     });
 }

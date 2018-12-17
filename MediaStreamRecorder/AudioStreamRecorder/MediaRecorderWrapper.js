@@ -20,9 +20,11 @@ function MediaRecorderWrapper(mediaStream) {
      * @method
      * @memberof MediaStreamRecorder
      * @example
-     * recorder.record();
+     * recorder.start(5000);
      */
     this.start = function(timeSlice, __disableLogs) {
+        this.timeSlice = timeSlice || 5000;
+
         if (!self.mimeType) {
             self.mimeType = 'video/webm';
         }
@@ -87,16 +89,14 @@ function MediaRecorderWrapper(mediaStream) {
 
         // i.e. stop recording when <video> is paused by the user; and auto restart recording 
         // when video is resumed. E.g. yourStream.getVideoTracks()[0].muted = true; // it will auto-stop recording.
-        mediaRecorder.ignoreMutedMedia = self.ignoreMutedMedia || false;
+        if (self.ignoreMutedMedia === true) {
+            mediaRecorder.ignoreMutedMedia = true;
+        }
 
         var firedOnDataAvailableOnce = false;
 
         // Dispatching OnDataAvailable Handler
         mediaRecorder.ondataavailable = function(e) {
-            if (self.dontFireOnDataAvailableEvent) {
-                return;
-            }
-
             // how to fix FF-corrupt-webm issues?
             // should we leave this?          e.data.size < 26800
             if (!e.data || !e.data.size || e.data.size < 26800 || firedOnDataAvailableOnce) {
@@ -111,12 +111,16 @@ function MediaRecorderWrapper(mediaStream) {
 
             self.ondataavailable(blob);
 
-            self.dontFireOnDataAvailableEvent = true;
+            // self.dontFireOnDataAvailableEvent = true;
 
             if (!!mediaRecorder && mediaRecorder.state === 'recording') {
                 mediaRecorder.stop();
             }
             mediaRecorder = null;
+
+            if (self.dontFireOnDataAvailableEvent) {
+                return;
+            }
 
             // record next interval
             self.start(timeSlice, '__disableLogs');
@@ -206,6 +210,7 @@ function MediaRecorderWrapper(mediaStream) {
                     mediaRecorder.stop();
                 }
                 mediaRecorder = null;
+                self.onstop();
             }, 2000);
         }
     };
@@ -225,6 +230,8 @@ function MediaRecorderWrapper(mediaStream) {
         if (mediaRecorder.state === 'recording') {
             mediaRecorder.pause();
         }
+
+        this.dontFireOnDataAvailableEvent = true;
     };
 
     /**
@@ -251,7 +258,7 @@ function MediaRecorderWrapper(mediaStream) {
 
             var disableLogs = self.disableLogs;
             self.disableLogs = true;
-            this.record();
+            this.start(this.timeslice || 5000);
             self.disableLogs = disableLogs;
             return;
         }
@@ -282,6 +289,8 @@ function MediaRecorderWrapper(mediaStream) {
         this.dontFireOnDataAvailableEvent = true;
         this.stop();
     };
+
+    this.onstop = function() {};
 
     // Reference to "MediaRecorder" object
     var mediaRecorder;

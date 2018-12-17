@@ -26,6 +26,7 @@
  * @see For further information:
  * @see {@link https://github.com/muaz-khan/RecordRTC/tree/master/MRecordRTC|MRecordRTC Source Code}
  * @param {MediaStream} mediaStream - MediaStream object fetched using getUserMedia API or generated using captureStreamUntilEnded or WebAudio API.
+ * @requires {@link RecordRTC}
  */
 
 function MRecordRTC(mediaStream) {
@@ -78,16 +79,18 @@ function MRecordRTC(mediaStream) {
         };
 
         if (typeof mediaType.audio !== 'function' && isMediaRecorderCompatible() && mediaStream.getAudioTracks && !mediaStream.getAudioTracks().length) {
-            // Firefox supports both audio/video in single blob
             mediaType.audio = false;
         }
 
         if (typeof mediaType.video !== 'function' && isMediaRecorderCompatible() && mediaStream.getVideoTracks && !mediaStream.getVideoTracks().length) {
-            // Firefox supports both audio/video in single blob
             mediaType.video = false;
         }
 
-        if (!mediaType.audio && !mediaType.video) {
+        if (typeof mediaType.gif !== 'function' && isMediaRecorderCompatible() && mediaStream.getVideoTracks && !mediaStream.getVideoTracks().length) {
+            mediaType.gif = false;
+        }
+
+        if (!mediaType.audio && !mediaType.video && !mediaType.gif) {
             throw 'MediaStream must have either audio or video tracks.';
         }
 
@@ -104,7 +107,9 @@ function MRecordRTC(mediaStream) {
                 numberOfAudioChannels: this.numberOfAudioChannels || 2,
                 disableLogs: this.disableLogs,
                 recorderType: recorderType,
-                mimeType: mimeType.audio
+                mimeType: mimeType.audio,
+                timeSlice: this.timeSlice,
+                onTimeStamp: this.onTimeStamp
             });
 
             if (!mediaType.video) {
@@ -143,7 +148,9 @@ function MRecordRTC(mediaStream) {
                 frameInterval: this.frameInterval || 10,
                 disableLogs: this.disableLogs,
                 recorderType: recorderType,
-                mimeType: mimeType.video
+                mimeType: mimeType.video,
+                timeSlice: this.timeSlice,
+                onTimeStamp: this.onTimeStamp
             });
 
             if (!mediaType.audio) {
@@ -153,7 +160,10 @@ function MRecordRTC(mediaStream) {
 
         if (!!mediaType.audio && !!mediaType.video) {
             var self = this;
-            if (isMediaRecorderCompatible()) {
+
+            // this line prevents StereoAudioRecorder
+            // todo: fix it
+            if (isMediaRecorderCompatible() /* && !this.audioRecorder */ ) {
                 self.audioRecorder = null;
                 self.videoRecorder.startRecording();
             } else {
@@ -298,6 +308,30 @@ function MRecordRTC(mediaStream) {
     };
 
     /**
+     * Destroy all recorder instances.
+     * @method
+     * @memberof MRecordRTC
+     * @example
+     * recorder.destroy();
+     */
+    this.destroy = function() {
+        if (this.audioRecorder) {
+            this.audioRecorder.destroy();
+            this.audioRecorder = null;
+        }
+
+        if (this.videoRecorder) {
+            this.videoRecorder.destroy();
+            this.videoRecorder = null;
+        }
+
+        if (this.gifRecorder) {
+            this.gifRecorder.destroy();
+            this.gifRecorder = null;
+        }
+    };
+
+    /**
      * This method can be used to manually get all recorded blobs' DataURLs.
      * @param {function} callback - All recorded blobs' DataURLs are passed back to the "callback" function.
      * @method
@@ -311,14 +345,28 @@ function MRecordRTC(mediaStream) {
      */
     this.getDataURL = function(callback) {
         this.getBlob(function(blob) {
-            getDataURL(blob.audio, function(_audioDataURL) {
+            if (blob.audio && blob.video) {
+                getDataURL(blob.audio, function(_audioDataURL) {
+                    getDataURL(blob.video, function(_videoDataURL) {
+                        callback({
+                            audio: _audioDataURL,
+                            video: _videoDataURL
+                        });
+                    });
+                });
+            } else if (blob.audio) {
+                getDataURL(blob.audio, function(_audioDataURL) {
+                    callback({
+                        audio: _audioDataURL
+                    });
+                });
+            } else if (blob.video) {
                 getDataURL(blob.video, function(_videoDataURL) {
                     callback({
-                        audio: _audioDataURL,
                         video: _videoDataURL
                     });
                 });
-            });
+            }
         });
 
         function getDataURL(blob, callback00) {
@@ -343,7 +391,7 @@ function MRecordRTC(mediaStream) {
 
         function processInWebWorker(_function) {
             var blob = URL.createObjectURL(new Blob([_function.toString(),
-                'this.onmessage =  function (e) {' + _function.name + '(e.data);}'
+                'this.onmessage =  function (eee) {' + _function.name + '(eee.data);}'
             ], {
                 type: 'application/javascript'
             }));

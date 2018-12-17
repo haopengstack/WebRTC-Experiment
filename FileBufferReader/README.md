@@ -1,6 +1,8 @@
-# [FileBufferReader.js](https://github.com/muaz-khan/FileBufferReader) / [Demo](https://www.WebRTC-Experiment.com/FileBufferReader/)
+# [FileBufferReader.js](https://github.com/muaz-khan/FileBufferReader) / [Demo](https://www.WebRTC-Experiment.com/FileBufferReader/) / [Watch a YouTube video](https://www.youtube.com/watch?v=gv8xpdGdS4o)
 
-[![npm](https://img.shields.io/npm/v/fbr.svg)](https://npmjs.org/package/fbr) [![downloads](https://img.shields.io/npm/dm/fbr.svg)](https://npmjs.org/package/fbr)
+[![npm](https://img.shields.io/npm/v/fbr.svg)](https://npmjs.org/package/fbr) [![downloads](https://img.shields.io/npm/dm/fbr.svg)](https://npmjs.org/package/fbr) [![Build Status: Linux](https://travis-ci.org/muaz-khan/FileBufferReader.png?branch=master)](https://travis-ci.org/muaz-khan/FileBufferReader)
+
+All released versions: https://github.com/muaz-khan/FileBufferReader/releases
 
 Using FileBufferReader.js, you can:
 
@@ -22,31 +24,52 @@ WebRTC_Data_Channel.binaryType = 'arraybuffer';
 
 It is <a href="https://www.webrtc-experiment.com/licence/">MIT Licenced</a>, which means that you can use it in any commercial/non-commercial product, free of cost.
 
-```
-npm install fbr
+```sh
+npm install fbr --production
+
+# or using bower
+bower install fbr
 ```
 
 To use it:
 
 ```html
 <script src="./node_modules/fbr/FileBufferReader.js"></script>
+<script src="./bower_components/fbr/FileBufferReader.js"></script>
+
+<!-- or CDN -->
+<script src="https://cdn.webrtc-experiment.com/FileBufferReader.js"></script>
+
+<!-- or rawgit -->
+<script src="https://rawgit.com/muaz-khan/FileBufferReader/master/FileBufferReader.js"></script>
 ```
+
+Or run localhost server:
+
+```sh
+node server.js
+```
+
+Then open: `http://localhost:9001/` or `http://127.0.0.1:9001/`.
 
 ## [fbr-client](https://github.com/muaz-khan/FileBufferReader/tree/master/fbr-client)
 
 You can even try [socket.io file sharing client](https://github.com/muaz-khan/FileBufferReader/tree/master/fbr-client):
 
-```
+```sh
 npm install fbr-client
 ```
 
 Then run the server:
 
-```
-node ./node_modules/fbr-client/server.js
+```sh
+cd ./node_modules/fbr-client
+node server.js port=9001
 ```
 
-Then open: `http://localhost:8888/` or `http://127.0.0.1:8888/`.
+Then open: `http://localhost:9001/` or `http://127.0.0.1:9001/`.
+
+> You can modify development files from the `dev` directory; and use `grunt` tool to recompile into `FileBufferReader.js`.
 
 ## FileBufferReader API
 
@@ -74,6 +97,9 @@ You can use `input[type=file].onchange` instead, which is **strongly recommended
 ```javascript
 var fileSelector = new FileSelector();
 
+// *.png, *.jpeg, *.mp4, etc.
+fileSelector.accept = '*.*';
+
 var btnSelectFile = document.getElementById('select-file');
 btnSelectFile.onclick = function() {
     fileSelector.selectSingleFile(function(file) {
@@ -90,7 +116,7 @@ var fileBufferReader = new FileBufferReader();
 fileBufferReader.readAsArrayBuffer(file, function(fileUUID) {
     // var file         = fileBufferReader.chunks[fileUUID];
     // var listOfChunks = file.listOfChunks;
-    
+
     // get first chunk, and send using WebRTC data channels
     // NEVER send chunks in loop; otherwise you'll face issues in slow networks
     // remote peer should notify if it is ready for next chunk
@@ -120,11 +146,11 @@ fileBufferReader.readAsArrayBuffer(file, callback, extra);
 ```javascript
 datachannel.onmessage = function(event) {
     var chunk = event.data;
-    
+
     if (chunk instanceof ArrayBuffer || chunk instanceof DataView) {
         // array buffers are passed using WebRTC data channels
         // need to convert data back into JavaScript objects
-    
+
         fileBufferReader.convertToObject(chunk, function(object) {
             datachannel.onmessage({
                 data: object
@@ -132,10 +158,10 @@ datachannel.onmessage = function(event) {
         });
         return;
     }
-    
+
     // if you passed "extra-data", you can access it here:
     // chunk.extra.senderUserName or whatever else
-    
+
     // if target peer requested next chunk
     if(chunk.readyForNextChunk) {
         fileBufferReader.getNextChunk(chunk.uuid, function(nextChunk, isLastChunk) {
@@ -147,7 +173,7 @@ datachannel.onmessage = function(event) {
         });
         return;
     }
-    
+
     // if chunk is received
     fileBufferReader.addChunk(chunk, function(promptNextChunk) {
         // request next chunk
@@ -164,7 +190,7 @@ Link this script:
 https://cdn.webrtc-experiment.com/FileProgressBarHandler.js
 
 # or
-https://cdn.rawgit.com/muaz-khan/RTCMultiConnection/master/RTCMultiConnection-v3.0/dev/FileProgressBarHandler.js
+https://cdn.rawgit.com/muaz-khan/FileBufferReader/master/fbr.0/dev/FileProgressBarHandler.js
 ```
 
 Add a files-div:
@@ -215,7 +241,7 @@ var FileHelper = {
     onBegin: function(file) {
         // if you passed "extra-data", you can access it here:
         // file.extra.senderUserName or whatever else
-    
+
         var li = document.createElement('li');
         li.title = file.name;
         li.innerHTML = '<label>0%</label> <progress></progress>';
@@ -230,13 +256,13 @@ var FileHelper = {
     onEnd: function(file) {
         // if you passed "extra-data", you can access it here:
         // file.extra.senderUserName or whatever else
-        
+
         progressHelper[file.uuid].li.innerHTML = '<a href="' + file.url + '" target="_blank" download="' + file.name + '">' + file.name + '</a>';
     },
     onProgress: function(chunk) {
         // if you passed "extra-data", you can access it here:
         // chunk.extra.senderUserName or whatever else
-        
+
         var helper = progressHelper[chunk.uuid];
         helper.progress.value = chunk.currentPosition || chunk.maxChunks || helper.progress.max;
         updateLabel(helper.progress, helper.label);
@@ -327,7 +353,7 @@ fbr.readAsArrayBuffer(file, function(fileUUID) {
 The structure of `fileBufferReader.chunks` object looks like this:
 
 ```javascript
-fileBufferReader.chunks = 
+fileBufferReader.chunks =
 {
     // "4152661527041346" is file-uuid
    "4152661527041346":{
@@ -427,7 +453,51 @@ for(var chunkIndex = 1; chunkIndex < allFileIndices.length; i++) {
 }
 ```
 
-## `FileConverter`
+# `FileSelector`
+
+Provides methods to select single file, multiple files or entire directory.
+
+**Select single file:**
+
+```javascript
+var selector = new FileSelector();
+selector.accept = '*.png';
+selector.selectSingleFile(function(file) {
+    alert(file.name);
+}, function() {
+    alert('User did not select any file.');
+});
+```
+
+**Select multiple files:**
+
+```javascript
+var selector = new FileSelector();
+selector.accept = '*.png';
+selector.selectMultipleFiles(function(files) {
+    files.forEach(function(file) {
+        alert(file.name);
+    });
+}, function() {
+    alert('User did not select any file.');
+});
+```
+
+**Select entire directory:**
+
+```javascript
+var selector = new FileSelector();
+selector.accept = '*.png';
+selector.selectDirectory(function(files) {
+    files.forEach(function(file) {
+        alert(file.webkitRelativePath);
+    });
+}, function() {
+    alert('User did not select any file.');
+});
+```
+
+# `FileConverter`
 
 This global object exposes two methods:
 
@@ -480,6 +550,13 @@ fbr.getNextChunks('file-uuid', function(buffer) {
 ## Applications using FileBufferReader
 
 1. [RTCMultiConnection.js](https://githbu.com/RTCMultiConnection)
+
+## RTCMultiConnection FileBufferReader Demos
+
+1. https://rtcmulticonnection.herokuapp.com/demos/Audio+Video+TextChat+FileSharing.html
+2. https://rtcmulticonnection.herokuapp.com/demos/TextChat+FileSharing.html
+
+More demos here: https://rtcmulticonnection.herokuapp.com/demos/
 
 ## License
 

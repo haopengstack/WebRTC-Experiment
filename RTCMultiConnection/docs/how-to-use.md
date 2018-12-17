@@ -7,31 +7,38 @@
 All files from `/dist` directory are available on CDN: `https://cdn.webrtc-experiment.com:443/`
 
 ```html
-<script src="/RTCMultiConnection.min.js"></script>
-
 <!-- or -->
-<script src="/dist/rmc3.min.js"></script>
+<script src="/dist/RTCMultiConnection.min.js"></script>
 
-<!-- CDN non-minified or minified -->
-<script src="https://cdn.webrtc-experiment.com:443/rmc3.min.js"></script>
+<!-- Heroku Link -->
+<script src="https://rtcmulticonnection.herokuapp.com/dist/RTCMultiConnection.min.js"></script>
 
 <!-- or specific version -->
-<script src="https://github.com/muaz-khan/RTCMultiConnection/releases/download/3.3.9/rmc3.min.js"></script>
+<script src="https://github.com/muaz-khan/RTCMultiConnection/releases/download/1.4.7/RTCMultiConnection.js"></script>
+
+<!-- or CDN -->
+<script src="https://rawgit.com/muaz-khan/RTCMultiConnection/master/dist/RTCMultiConnection.min.js"></script>
+
+<!-- another CDN -->
+<script src="https://cdn.jsdelivr.net/npm/rtcmulticonnection@latest/dist/RTCMultiConnection.min.js"></script>
+
+<!-- another CDN -->
+<script src="https://unpkg.com/rtcmulticonnection@latest/dist/RTCMultiConnection.min.js"></script>
 ```
 
 If you're sharing files, you also need to link:
 
 ```html
-<script src="/dev/FileBufferReader.js"></script>
-
-<!-- or CDN -->
-<script src="https://cdn.webrtc-experiment.com:443/rmc3.fbr.min.js"></script>
-
-<!-- or specific version -->
-<script src="https://github.com/muaz-khan/RTCMultiConnection/releases/download/3.3.9/rmc3.fbr.min.js"></script>
+<script src="https://cdn.webrtc-experiment.com:443/FileBufferReader.js"></script>
 ```
 
 > You can link multiple files from `dev` directory. Order doesn't matters.
+
+Use socket.io:
+
+```html
+<script src="https://rtcmulticonnection.herokuapp.com/socket.io/socket.io.js"></script>
+```
 
 ## Set different socket URL
 
@@ -41,7 +48,7 @@ You can use custom ports either via `config.json` file:
 
 ```json
 {
-  "socketURL": "http:s//yourdomain.com:9001/",
+  "socketURL": "https://yourdomain.com:9001/",
   "socketMessageEvent": "RTCMultiConnection-Message"
 }
 ```
@@ -49,7 +56,7 @@ You can use custom ports either via `config.json` file:
 Or simply override in your HTML code:
 
 ```javascript
-connection.socketURL = 'http:s//yourdomain.com:9001/';
+connection.socketURL = 'https://yourdomain.com:9001/';
 
 // if your server is already having "message" event
 // then you can use something else, unique.
@@ -73,9 +80,11 @@ connection.socketURL = 'https://rtcmulticonnection.herokuapp.com:443/';
 
 Here is a demo explaining how to use above `socketURL`:
 
-* [https://jsfiddle.net/zd9Lsdfk/](https://jsfiddle.net/zd9Lsdfk/)
+* https://jsfiddle.net/zd9Lsdfk/50/
 
 ## Integrate in your own applications?
+
+> Note: this section works only with v3.4.6 or earlier releases.
 
 ```javascript
 // node.js code
